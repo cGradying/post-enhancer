@@ -50,7 +50,9 @@ async function setImg(kind, url, persist = true) {
 // ---------- layout ----------
 function layout() {
   const W = Math.min(8000, Math.max(200, +$('cw').value || 1080)), H = Math.min(8000, Math.max(200, +$('ch').value || 1440));
-  const mt = Math.round(H * $('mt').value / 100), mb = Math.round(H * $('mb').value / 100), ms = Math.round(W * $('ms').value / 100);
+  // Padding goes round all four sides; text space is added only where there is text.
+  const pad = Math.round(Math.min(W, H) * $('padAmt').value / 100), gap = Math.round(H * $('textSpace').value / 100);
+  const ms = pad, mt = pad + ($('title').value.trim() ? gap : 0), mb = pad + ($('sub').value.trim() ? gap : 0);
   return {
     w: W, h: H, slot: {x: ms, y: mt, w: Math.max(16, W - 2 * ms), h: Math.max(16, H - mt - mb)},
     cover: segVal('fitSeg') === 'cover', border: +$('border').value, border_color: $('borderColor').value,
@@ -111,8 +113,9 @@ function drawOver(ctx, L) {
   ctx.fillStyle = $('textColor').value; ctx.textAlign = align; ctx.textBaseline = 'middle';
   const weight = font === 'Silkscreen' ? 700 : 600;
   const text = (t, size, y) => { if (!t.trim()) return; ctx.font = `${weight} ${size}px ${font.includes(',') ? font : `"${font}"`}`; ctx.fillText(t, x, y, s.w); };
-  text($('title').value, +$('titleSize').value, s.y / 2);
-  text($('sub').value, +$('subSize').value, s.y + s.h + (H - s.y - s.h) / 2);
+  const ts = +$('textSize').value;
+  text($('title').value, ts, s.y / 2);
+  text($('sub').value, Math.round(ts * .46), s.y + s.h + (H - s.y - s.h) / 2);
 
   if (imgs.logo) {
     const i = imgs.logo.img, lw = W * $('logoSize').value / 100, lh = lw * i.naturalHeight / i.naturalWidth;
@@ -155,29 +158,25 @@ function render() {
   const view = $('tplView'), L = layout(), p = App.photo;
   if (App.view === 'grid') return renderGrid(view, L);
   if (!single || !view.contains(single.wrap)) {
-    view.innerHTML = `<div class="tpl-single"><div><div class="ruler"><span class="rx num"><span></span></span><span class="ry num"><span></span></span><canvas></canvas></div><div class="readout num"></div></div></div>`;
-    single = {wrap: view.firstElementChild, canvas: view.querySelector('canvas'), rx: view.querySelector('.rx span'), ry: view.querySelector('.ry span'), read: view.querySelector('.readout')};
+    view.innerHTML = `<div class="tpl-single"><div><canvas></canvas><div class="readout num"></div></div></div>`;
+    single = {wrap: view.firstElementChild, canvas: view.querySelector('canvas'), read: view.querySelector('.readout')};
   }
   const st = $('stage'), dpr = devicePixelRatio || 1;
-  const k = Math.min((st.clientWidth - 110) / L.w, (st.clientHeight - 130) / L.h, 1);
+  const k = Math.min((st.clientWidth - 64) / L.w, (st.clientHeight - 96) / L.h, 1);
   const c = single.canvas;
   c.width = Math.round(L.w * k * dpr); c.height = Math.round(L.h * k * dpr);
   c.style.width = `${Math.round(L.w * k)}px`; c.style.height = `${Math.round(L.h * k)}px`;
   if (p !== lastPhoto) { c.style.animation = 'none'; c.offsetWidth; c.style.animation = ''; lastPhoto = p; }
   const ctx = c.getContext('2d'); ctx.setTransform(k * dpr, 0, 0, k * dpr, 0, 0);
   const r = drawAll(ctx, L, p);
-  single.rx.textContent = `${L.w} PX`; single.ry.textContent = `${L.h} PX`;
-  const up = segVal('upSeg');
-  single.read.innerHTML = `<span>Canvas <b>${L.w}×${L.h}</b></span><span>Slot <b>${L.slot.w}×${L.slot.h}</b></span>`
-    + (r ? `<span>Photo <b>${p.w}×${p.h}</b> → <b>${r.w}×${r.h}</b> (${Math.round(r.factor * 100)}%)</span>`
-      + (r.factor > 1 ? (r.native ? `<span class="badge warn">UNDER-RES · KEPT NATIVE</span>` : `<span class="badge">${up === 'ai' ? 'AI' : 'LANCZOS'} UPSCALE ×${r.factor.toFixed(2)}</span>`) : '')
-      + (segVal('bgSeg') === 'blur' ? '<span class="badge">BLUR DRAWN ON EXPORT</span>' : '') : '');
+  single.read.innerHTML = `<span><b>${L.w}×${L.h}</b></span>`
+    + (r && r.factor > 1 ? (r.native ? '<span class="badge warn">PHOTO TOO SMALL, KEPT NATIVE</span>' : `<span class="badge">UPSCALED ×${r.factor.toFixed(1)}</span>`) : '');
 }
 
 async function renderGrid(view, L) {
   single = null;
   const token = ++gridToken;
-  view.innerHTML = `<div class="view"><section class="block"><h3>Batch preview <span class="num">${App.photos.length} photos · ${L.w}×${L.h} · click one to open it</span></h3><div class="tiles" id="tplTiles"></div></section></div>`;
+  view.innerHTML = `<div class="view"><section class="block"><h3>All photos <span class="num">${App.photos.length}</span></h3><div class="tiles" id="tplTiles"></div></section></div>`;
   const tiles = view.querySelector('#tplTiles'), k = Math.min(240 / L.h, 200 / L.w);
   for (let i = 0; i < App.photos.length; i++) {
     if (i % 6 === 5) { await new Promise(requestAnimationFrame); if (token !== gridToken) return; }
@@ -207,7 +206,7 @@ async function payload() {
 const TPL_SCOPE = () => document.querySelectorAll('#tool-template input[id], #tool-template select[id]');
 function snapshot(name) {
   const t = {name, version: 1, inputs: {}, segs: {}, logo: imgs.logo?.url || null, bg: imgs.bg?.url || null};
-  TPL_SCOPE().forEach(i => { if (i.type !== 'file' && i.id !== 'libName') t.inputs[i.id] = i.type === 'checkbox' ? i.checked : i.value; });
+  TPL_SCOPE().forEach(i => { if (i.type !== 'file' && i.id !== 'tplPick') t.inputs[i.id] = i.type === 'checkbox' ? i.checked : i.value; });
   document.querySelectorAll('#tool-template .seg[id]').forEach(s => t.segs[s.id] = segVal(s.id));
   return t;
 }
@@ -219,20 +218,24 @@ async function apply(t) {
 }
 const lib = () => store.get(LIB_KEY) || {};
 function renderLib() {
-  const all = lib(), names = Object.keys(all).sort();
-  $('libTag').textContent = names.length || '';
-  $('lib').innerHTML = names.length ? names.map(n => `<li class="${n === App.tplName ? 'cur' : ''}"><button type="button" class="load" data-n="${esc(n)}">${esc(n)}</button><button type="button" class="x" data-del="${esc(n)}" aria-label="Delete ${esc(n)}">${icon('x')}</button></li>`).join('') : '<li class="empty">No saved templates yet.</li>';
+  const names = Object.keys(lib()).sort();
+  $('tplPick').innerHTML = `<option value="">${App.tplName ? 'Unsaved changes' : 'Unsaved template'}</option>` + names.map(n => `<option ${n === App.tplName ? 'selected' : ''}>${esc(n)}</option>`).join('');
+  $('libDelete').disabled = !App.tplName;
 }
-$('lib').addEventListener('click', e => {
-  const load = e.target.closest('[data-n]'), del = e.target.closest('[data-del]');
-  if (load) { apply(lib()[load.dataset.n]); status(`Loaded "${load.dataset.n}".`); }
-  if (del) { const all = lib(); delete all[del.dataset.del]; store.set(LIB_KEY, all); if (App.tplName === del.dataset.del) App.tplName = null; renderLib(); }
+$('tplPick').addEventListener('change', async () => {
+  const n = $('tplPick').value; if (!n) return;
+  await apply(lib()[n]); renderLib(); status(`Loaded "${n}".`);
 });
 $('libSave').addEventListener('click', () => {
-  const all = lib(), name = $('libName').value.trim() || App.tplName || `Template ${Object.keys(all).length + 1}`;
+  const all = lib(), name = (prompt('Save template as', App.tplName || `Template ${Object.keys(all).length + 1}`) || '').trim();
+  if (!name) return;
   all[name] = snapshot(name);
-  if (!store.set(LIB_KEY, all)) return status('Browser storage is full; remove a template or use a smaller background image.', 'err');
-  App.tplName = name; $('libName').value = ''; renderLib(); status(`Saved "${name}".`, 'ok');
+  if (!store.set(LIB_KEY, all)) return status('Browser storage is full; delete a template or use a smaller background image.', 'err');
+  App.tplName = name; renderLib(); status(`Saved "${name}".`, 'ok');
+});
+$('libDelete').addEventListener('click', () => {
+  const n = App.tplName; if (!n || !confirm(`Delete "${n}"?`)) return;
+  const all = lib(); delete all[n]; store.set(LIB_KEY, all); App.tplName = null; renderLib(); status(`Deleted "${n}".`);
 });
 $('libExport').addEventListener('click', () => {
   const t = snapshot(App.tplName || 'template'), a = document.createElement('a');
@@ -255,11 +258,13 @@ $('libFile').addEventListener('change', async () => {
 function sync() {
   const L = layout(), bg = segVal('bgSeg'), wm = segVal('wmSeg');
   $('canvasTag').textContent = `${L.w}×${L.h}`;
+  $('customSize').hidden = segVal('canvasSeg') !== 'custom';
+  $('logoFields').hidden = $('logoClear').hidden = !imgs.logo;
   $('bgSolid').hidden = bg !== 'solid' && bg !== 'fade';
   $('bgImageRow').hidden = bg !== 'image';
   $('wmFields').hidden = wm === 'off';
   $('wmTag').textContent = wm === 'off' ? 'Off' : wm[0].toUpperCase() + wm.slice(1);
-  $('logoTag').textContent = imgs.logo ? 'Set' : 'None';
+  $('logoTag').textContent = imgs.logo ? 'Logo' : '';
   pos.querySelectorAll('[data-p]').forEach(b => b.classList.toggle('on', b.dataset.p === $('logoPosVal').value));
 }
 

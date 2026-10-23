@@ -8,11 +8,11 @@
 </head>
 <body>
 <!--
-THESIS: an export desk that shows every file before it exists: each output is drawn as it will upload, not described as a checkbox.
-OWN-WORLD: pixel-id-maker's tool chrome (user's repo): ink-violet panels #14111c/#1b1626, lavender accent #a66bff/#7c3aed, Silkscreen pixel headings over Space Grotesk, collapsible uppercase sections, and its purple pixel-fade field as the empty state.
-STORY: drop or paste photos; Post Prep makes platform sizes and carousel splits, Template frames every photo with title, logo and watermark; export a zip with live progress.
-FIRST VIEWPORT: 356px settings panel left (pixel-fade brand band, Post Prep / Template tabs, sections, Export); right a bar over a dark stage holding the drop field, the drawn outputs, or the framed photo with rulers; filmstrip under it.
-FORM: pinned by user ("use pixel-id-maker for design reference").
+THESIS: an export desk that shows every file before it exists, with nothing between the photo and the Export button but the choices that change the result.
+OWN-WORLD: pixel-id-maker's tool chrome (user's repo): ink-violet panels #14111c/#1b1626, lavender accent #a66bff/#7c3aed, Silkscreen pixel headings over Space Grotesk, one-open-at-a-time uppercase sections, purple pixel-fade field as the empty state.
+STORY: drop photos, pick a tab, adjust one section, export.
+FIRST VIEWPORT: panel left: pixel-fade header with tabs, an accordion of 2–4 sections, and a pinned footer with format, upscale and the Export button; right: a quiet bar over the stage and filmstrip.
+FORM: pinned by user ("use pixel-id-maker for design reference"); distilled on request ("make it simpler").
 -->
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
   <symbol id="i-down" viewBox="0 0 12 12"><rect x="5" y="1" width="2" height="5"/><rect x="3" y="6" width="6" height="1"/><rect x="4" y="7" width="4" height="1"/><rect x="5" y="8" width="2" height="1"/><rect x="1" y="10" width="10" height="2"/></symbol>
@@ -24,204 +24,184 @@ FORM: pinned by user ("use pixel-id-maker for design reference").
 </svg>
 
 <aside>
-  <div class="brand">
+  <header class="brand">
     <canvas id="brandFade" aria-hidden="true"></canvas>
     <h1>POST PREP</h1>
-    <p class="sub">Platform-ready exports, carousel splits and photoshoot frames, at full quality. <span id="saved">Auto-saves</span></p>
     <div class="tabs" role="tablist" aria-label="Tool">
       <button type="button" role="tab" data-tool="post" class="on" aria-selected="true">Post Prep</button>
       <button type="button" role="tab" data-tool="template" aria-selected="false">Template</button>
     </div>
-  </div>
+  </header>
 
-  <!-- ===== Post Prep tool ===== -->
-  <div class="tool" id="tool-post">
-    <details open>
-      <summary>Outputs <span class="tag" id="outCount"></span></summary>
-      <div class="inner">
-        <div id="presets"></div>
-        <div class="quick"><button type="button" class="link" data-pick="ig">All Instagram</button> · <button type="button" class="link" data-pick="all">All</button> · <button type="button" class="link" data-pick="none">None</button></div>
-        <div class="grp">UPSCALED ORIGINAL</div>
-        <div class="seg full" id="origSeg"><button type="button" data-v="0" class="on">None</button><button type="button" data-v="2">×2</button><button type="button" data-v="4">×4</button></div>
-      </div>
-    </details>
+  <div class="scroll">
+    <!-- ===== Post Prep tool ===== -->
+    <div class="tool" id="tool-post">
+      <details name="post" open>
+        <summary>Sizes <span class="tag" id="outCount"></span></summary>
+        <div class="inner">
+          <div id="presets"></div>
+          <div class="quick"><button type="button" class="link" data-pick="all">All</button> · <button type="button" class="link" data-pick="none">None</button></div>
+          <div class="f row between"><span class="lbl-inline">Upscaled original</span><div class="seg" id="origSeg"><button type="button" data-v="0" class="on">Off</button><button type="button" data-v="2">×2</button><button type="button" data-v="4">×4</button></div></div>
+        </div>
+      </details>
 
-    <details open>
-      <summary>Carousel split <span class="tag" id="splitTag">Off</span></summary>
-      <div class="inner">
-        <div class="f"><div class="seg full" id="splitSeg"><button type="button" data-v="off" class="on">Off</button><button type="button" data-v="on">On</button></div></div>
-        <div id="splitFields" hidden>
-          <div class="f">
-            <div class="lbl">Columns</div>
-            <div class="row">
-              <div class="stepper"><button type="button" data-step="-1" aria-label="Fewer columns"><svg class="ico"><use href="#i-minus"/></svg></button><input id="cols" class="num" type="number" min="1" max="20" value="2" aria-label="Columns"><button type="button" data-step="1" aria-label="More columns"><svg class="ico"><use href="#i-plus"/></svg></button></div>
-              <button type="button" class="btn-sm" id="autoCols" title="Pick the column count that needs the least padding for this photo">Best fit</button>
+      <details name="post">
+        <summary>Carousel split <span class="tag" id="splitTag">Off</span></summary>
+        <div class="inner">
+          <div class="f"><div class="seg full" id="splitSeg"><button type="button" data-v="off" class="on">Off</button><button type="button" data-v="on">On</button></div></div>
+          <div id="splitFields" hidden>
+            <div class="f">
+              <div class="lbl">Columns</div>
+              <div class="row">
+                <div class="stepper"><button type="button" data-step="-1" aria-label="Fewer columns"><svg class="ico"><use href="#i-minus"/></svg></button><input id="cols" class="num" type="number" min="1" max="20" value="2" aria-label="Columns"><button type="button" data-step="1" aria-label="More columns"><svg class="ico"><use href="#i-plus"/></svg></button></div>
+                <button type="button" class="btn-sm" id="autoCols" title="Pick the column count that needs the least padding for this photo">Best fit</button>
+              </div>
             </div>
-          </div>
-          <div class="f">
-            <div class="lbl">Panel ratio</div>
-            <div class="seg" id="ratios"><button type="button" data-r="1:1" class="on">1:1</button><button type="button" data-r="4:5">4:5</button><button type="button" data-r="3:4">3:4</button><button type="button" data-r="custom">Custom</button></div>
-            <div class="row" id="customRatio" hidden style="margin-top:8px"><input id="rw" class="num" type="number" min="1" value="3" aria-label="Ratio width" style="width:64px">:<input id="rh" class="num" type="number" min="1" value="4" aria-label="Ratio height" style="width:64px"></div>
-          </div>
-          <div class="f">
-            <div class="lbl">Padding color <b id="padHex">#ffffff</b></div>
-            <div class="row">
-              <input type="color" id="pad" value="#ffffff" aria-label="Padding color" style="width:44px">
-              <button type="button" class="swatch" data-c="#ffffff" style="background:#fff" aria-label="White"></button>
-              <button type="button" class="swatch" data-c="#000000" style="background:#000" aria-label="Black"></button>
-              <button type="button" class="swatch" data-c="#f4eefc" style="background:#f4eefc" aria-label="Lavender white"></button>
-              <button type="button" class="swatch" data-c="#14111c" style="background:#14111c" aria-label="Ink"></button>
+            <div class="f">
+              <div class="lbl">Panel shape</div>
+              <div class="seg" id="ratios"><button type="button" data-r="1:1" class="on">1:1</button><button type="button" data-r="4:5">4:5</button><button type="button" data-r="3:4">3:4</button><button type="button" data-r="custom">Custom</button></div>
+              <div class="row" id="customRatio" hidden style="margin-top:8px"><input id="rw" class="num" type="number" min="1" value="3" aria-label="Ratio width" style="width:64px">:<input id="rh" class="num" type="number" min="1" value="4" aria-label="Ratio height" style="width:64px"></div>
             </div>
-            <small class="note">Fills space the photo doesn't cover. No pixel of the photo is cropped.</small>
-          </div>
-          <label class="chk"><input type="checkbox" id="wideOnly" checked> Only split wide photos (1.5:1 or wider)</label>
-        </div>
-      </div>
-    </details>
-  </div>
-
-  <!-- ===== Template tool ===== -->
-  <div class="tool" id="tool-template" hidden>
-    <details open>
-      <summary>Canvas <span class="tag num" id="canvasTag"></span></summary>
-      <div class="inner">
-        <div class="f"><div class="seg" id="canvasSeg">
-          <button type="button" data-c="1080x1440" class="on">3:4</button><button type="button" data-c="1080x1350">4:5</button><button type="button" data-c="1080x1080">1:1</button><button type="button" data-c="1440x1080">4:3</button><button type="button" data-c="1620x1080">3:2</button><button type="button" data-c="1920x1080">16:9</button><button type="button" data-c="custom">Custom</button>
-        </div></div>
-        <div class="f row">
-          <input id="cw" class="num" type="number" min="200" max="8000" value="1080" aria-label="Canvas width"> × <input id="ch" class="num" type="number" min="200" max="8000" value="1440" aria-label="Canvas height">
-          <button type="button" class="btn-sm" id="flip" title="Swap portrait and landscape">Flip</button>
-        </div>
-      </div>
-    </details>
-
-    <details open>
-      <summary>Photo</summary>
-      <div class="inner">
-        <div class="f"><div class="seg full" id="fitSeg"><button type="button" data-v="contain" class="on">Fit whole photo</button><button type="button" data-v="cover">Fill slot</button></div></div>
-        <div class="three">
-          <div class="f"><label>Top <b class="num" data-out="mt"></b></label><input type="range" id="mt" min="0" max="35" value="10"></div>
-          <div class="f"><label>Sides <b class="num" data-out="ms"></b></label><input type="range" id="ms" min="0" max="30" value="6"></div>
-          <div class="f"><label>Bottom <b class="num" data-out="mb"></b></label><input type="range" id="mb" min="0" max="35" value="12"></div>
-        </div>
-        <div class="three">
-          <div class="f"><label>Border <b class="num" data-out="border"></b></label><input type="range" id="border" min="0" max="60" value="0"></div>
-          <div class="f"><label>Corners <b class="num" data-out="radius"></b></label><input type="range" id="radius" min="0" max="120" value="0"></div>
-          <div class="f"><label>Border color</label><input type="color" id="borderColor" value="#ffffff"></div>
-        </div>
-        <label class="chk"><input type="checkbox" id="shadow" checked> Soft drop shadow</label>
-      </div>
-    </details>
-
-    <details open>
-      <summary>Background</summary>
-      <div class="inner">
-        <div class="f"><div class="seg full" id="bgSeg"><button type="button" data-v="solid" class="on">Solid</button><button type="button" data-v="blur">Blur photo</button><button type="button" data-v="fade">Pixel fade</button><button type="button" data-v="image">Image</button></div></div>
-        <div class="two" id="bgSolid"><div class="f"><label>Color</label><input type="color" id="bgColor" value="#f4eefc"></div></div>
-        <div class="f file-pick" id="bgImageRow" hidden><img id="bgThumb" alt="Background image" hidden><button type="button" class="btn-sm" id="bgPick">Choose image</button><input type="file" id="bgFile" accept="image/*" hidden></div>
-      </div>
-    </details>
-
-    <details open>
-      <summary>Text</summary>
-      <div class="inner">
-        <div class="f"><label for="title">Title</label><input type="text" id="title" placeholder="Event name" value="PHOTOSHOOT"></div>
-        <div class="f"><label for="sub">Credit line</label><input type="text" id="sub" placeholder="Photographer · date · place"></div>
-        <div class="two">
-          <div class="f"><label>Font</label><select id="font"><option>Silkscreen</option><option>Space Grotesk</option><option value="Georgia, serif">Serif</option><option value="Helvetica Neue, Arial, sans-serif">Sans</option></select></div>
-          <div class="f"><label>Color</label><input type="color" id="textColor" value="#1a0f3a"></div>
-        </div>
-        <div class="two">
-          <div class="f"><label>Title size <b class="num" data-out="titleSize"></b></label><input type="range" id="titleSize" min="16" max="160" value="56"></div>
-          <div class="f"><label>Credit size <b class="num" data-out="subSize"></b></label><input type="range" id="subSize" min="10" max="80" value="26"></div>
-        </div>
-        <div class="f"><div class="lbl">Align</div><div class="seg full" id="alignSeg"><button type="button" data-v="left">Left</button><button type="button" data-v="center" class="on">Center</button><button type="button" data-v="right">Right</button></div></div>
-      </div>
-    </details>
-
-    <details>
-      <summary>Logo <span class="tag" id="logoTag">None</span></summary>
-      <div class="inner">
-        <div class="f file-pick"><img id="logoThumb" alt="Logo" hidden><button type="button" class="btn-sm" id="logoPick">Choose logo</button><button type="button" class="link" id="logoClear">Remove</button><input type="file" id="logoFile" accept="image/*" hidden></div>
-        <div class="two">
-          <div class="f"><div class="lbl">Position</div><div class="grid9" id="logoPos"></div></div>
-          <div>
-            <div class="f"><label>Size <b class="num" data-out="logoSize"></b></label><input type="range" id="logoSize" min="4" max="60" value="16"></div>
-            <div class="f"><label>Opacity <b class="num" data-out="logoAlpha"></b></label><input type="range" id="logoAlpha" min="10" max="100" value="100"></div>
+            <div class="f">
+              <div class="lbl">Padding color</div>
+              <div class="row">
+                <input type="color" id="pad" value="#ffffff" aria-label="Padding color" style="width:44px">
+                <button type="button" class="swatch" data-c="#ffffff" style="background:#fff" aria-label="White"></button>
+                <button type="button" class="swatch" data-c="#000000" style="background:#000" aria-label="Black"></button>
+                <button type="button" class="swatch" data-c="#f4eefc" style="background:#f4eefc" aria-label="Lavender white"></button>
+              </div>
+            </div>
+            <label class="chk"><input type="checkbox" id="wideOnly" checked> Only split wide photos</label>
           </div>
         </div>
-      </div>
-    </details>
-
-    <details>
-      <summary>Watermark <span class="tag" id="wmTag">Off</span></summary>
-      <div class="inner">
-        <div class="f"><div class="seg full" id="wmSeg"><button type="button" data-v="off" class="on">Off</button><button type="button" data-v="corner">Corner</button><button type="button" data-v="center">Center</button><button type="button" data-v="tiled">Tiled</button></div></div>
-        <div id="wmFields" hidden>
-          <div class="f"><label for="wmText">Text</label><input type="text" id="wmText" value="© cgradying"></div>
-          <label class="chk"><input type="checkbox" id="wmLogo"> Use the logo instead of text</label>
-          <div class="two">
-            <div class="f"><label>Size <b class="num" data-out="wmSize"></b></label><input type="range" id="wmSize" min="2" max="30" value="5"></div>
-            <div class="f"><label>Opacity <b class="num" data-out="wmAlpha"></b></label><input type="range" id="wmAlpha" min="5" max="100" value="35"></div>
-          </div>
-          <div class="f"><label>Color</label><input type="color" id="wmColor" value="#ffffff"></div>
-        </div>
-      </div>
-    </details>
-
-    <details>
-      <summary>Template library <span class="tag" id="libTag"></span></summary>
-      <div class="inner">
-        <ul class="lib" id="lib"></ul>
-        <div class="row f"><input type="text" id="libName" placeholder="Template name"><button type="button" class="btn-sm" id="libSave">Save</button></div>
-        <div class="row"><button type="button" class="btn-sm" id="libExport">Export file</button><button type="button" class="btn-sm" id="libImport">Import file</button><input type="file" id="libFile" accept="application/json,.json" hidden></div>
-        <small class="note">Templates live in this browser. Export a file to share one with your team.</small>
-      </div>
-    </details>
-  </div>
-
-  <!-- ===== Shared export ===== -->
-  <details open>
-    <summary>Export</summary>
-    <div class="inner">
-      <div class="two">
-        <div class="f"><div class="lbl">Format</div><div class="seg full" id="fmtSeg"><button type="button" data-v="jpeg" class="on">JPEG</button><button type="button" data-v="png">PNG</button></div></div>
-        <div class="f" id="qualityRow"><label>Quality <b class="num" data-out="quality"></b></label><input type="range" id="quality" min="70" max="100" value="95"></div>
-      </div>
-      <div class="f"><div class="lbl">Upscale small photos <b id="upNote"></b></div><div class="seg full" id="upSeg"><button type="button" data-v="off" class="on">Off</button><button type="button" data-v="lanczos">Lanczos</button><button type="button" data-v="ai" id="upAi">AI</button></div></div>
-      <label class="chk"><input type="checkbox" id="enhance"> Auto enhance (levels, contrast, sharpen)</label>
-      <div class="two">
-        <div class="f"><label for="event">Event</label><input type="text" id="event" placeholder="e.g. summit"></div>
-        <div class="f"><label for="rename">File names</label><input type="text" id="rename" placeholder="{name}_{preset}"></div>
-      </div>
-      <div class="tokens" id="tokens"><button type="button">{name}</button><button type="button">{event}</button><button type="button">{date}</button><button type="button">{n:03}</button><button type="button">{preset}</button></div>
-      <p class="sample" id="sample"></p>
-      <div class="two">
-        <div class="f"><label for="artist">Artist (metadata)</label><input type="text" id="artist" value="cgradying"></div>
-        <div class="f"><label for="copyright">Copyright</label><input type="text" id="copyright" value="© cgradying"></div>
-      </div>
-      <button class="btn" id="export" disabled><svg class="ico"><use href="#i-down"/></svg><span id="exportLabel">Add photos to export</span></button>
-      <div class="prog" id="prog" hidden><div class="lbl"><span id="progStage">Uploading</span><b class="num" id="progCount"></b></div><div class="bar" id="progBar"><i></i></div></div>
-      <p class="status" id="status" role="status"></p>
+      </details>
     </div>
-  </details>
 
-  <details>
-    <summary>Past batches <span class="tag" id="histCount"></span></summary>
-    <div class="inner"><ul class="history" id="history"><li class="empty">None yet.</li></ul></div>
-  </details>
+    <!-- ===== Template tool ===== -->
+    <div class="tool" id="tool-template" hidden>
+      <div class="library row">
+        <select id="tplPick" aria-label="Saved templates"><option value="">Unsaved template</option></select>
+        <button type="button" class="btn-sm" id="libSave">Save</button>
+        <details class="menu"><summary aria-label="More template actions">•••</summary>
+          <div class="menu-list">
+            <button type="button" id="libExport">Export file</button>
+            <button type="button" id="libImport">Import file</button>
+            <button type="button" id="libDelete">Delete</button>
+          </div>
+        </details>
+        <input type="file" id="libFile" accept="application/json,.json" hidden>
+      </div>
 
-  <footer class="credit"><span><b>POST PREP</b> <span class="num" id="version"></span></span><span>made by <a href="https://github.com/cGradying" target="_blank" rel="noopener">cgradying</a></span></footer>
+      <details name="tpl" open>
+        <summary>Layout <span class="tag num" id="canvasTag"></span></summary>
+        <div class="inner">
+          <div class="f"><div class="seg" id="canvasSeg">
+            <button type="button" data-c="1080x1440" class="on">3:4</button><button type="button" data-c="1080x1350">4:5</button><button type="button" data-c="1080x1080">1:1</button><button type="button" data-c="1440x1080">4:3</button><button type="button" data-c="1920x1080">16:9</button><button type="button" data-c="custom">Custom</button>
+          </div></div>
+          <div class="f row" id="customSize" hidden>
+            <input id="cw" class="num" type="number" min="200" max="8000" value="1080" aria-label="Canvas width"> × <input id="ch" class="num" type="number" min="200" max="8000" value="1440" aria-label="Canvas height">
+          </div>
+          <div class="f row between"><div class="seg" id="fitSeg"><button type="button" data-v="contain" class="on">Fit photo</button><button type="button" data-v="cover">Fill frame</button></div><button type="button" class="btn-sm" id="flip" title="Swap portrait and landscape">Rotate</button></div>
+          <div class="two">
+            <div class="f"><label>Padding <b class="num" data-out="padAmt"></b></label><input type="range" id="padAmt" min="0" max="25" value="6"></div>
+            <div class="f"><label>Text space <b class="num" data-out="textSpace"></b></label><input type="range" id="textSpace" min="0" max="25" value="7"></div>
+          </div>
+        </div>
+      </details>
+
+      <details name="tpl">
+        <summary>Style</summary>
+        <div class="inner">
+          <div class="f"><div class="seg full" id="bgSeg"><button type="button" data-v="solid" class="on">Color</button><button type="button" data-v="blur">Blur</button><button type="button" data-v="fade">Pixel</button><button type="button" data-v="image">Image</button></div></div>
+          <div class="f row" id="bgSolid"><span class="lbl-inline">Color</span><input type="color" id="bgColor" value="#f4eefc" aria-label="Background color" style="width:44px"></div>
+          <div class="f file-pick" id="bgImageRow" hidden><img id="bgThumb" alt="Background image" hidden><button type="button" class="btn-sm" id="bgPick">Choose image</button><input type="file" id="bgFile" accept="image/*" hidden></div>
+          <div class="two">
+            <div class="f"><label>Border <b class="num" data-out="border"></b></label><input type="range" id="border" min="0" max="60" value="0"></div>
+            <div class="f"><label>Corners <b class="num" data-out="radius"></b></label><input type="range" id="radius" min="0" max="120" value="0"></div>
+          </div>
+          <div class="row between">
+            <label class="chk"><input type="checkbox" id="shadow" checked> Shadow</label>
+            <label class="row lbl-inline">Border color <input type="color" id="borderColor" value="#ffffff" style="width:44px"></label>
+          </div>
+        </div>
+      </details>
+
+      <details name="tpl">
+        <summary>Text &amp; logo <span class="tag" id="logoTag"></span></summary>
+        <div class="inner">
+          <div class="f"><input type="text" id="title" placeholder="Title" value="PHOTOSHOOT" aria-label="Title"></div>
+          <div class="f"><input type="text" id="sub" placeholder="Credit line (optional)" aria-label="Credit line"></div>
+          <div class="two">
+            <div class="f"><select id="font" aria-label="Font"><option>Silkscreen</option><option>Space Grotesk</option><option value="Georgia, serif">Serif</option><option value="Helvetica Neue, Arial, sans-serif">Sans</option></select></div>
+            <div class="f row"><input type="color" id="textColor" value="#1a0f3a" aria-label="Text color"><div class="seg" id="alignSeg"><button type="button" data-v="left" aria-label="Align left">L</button><button type="button" data-v="center" class="on" aria-label="Align center">C</button><button type="button" data-v="right" aria-label="Align right">R</button></div></div>
+          </div>
+          <div class="f"><label>Text size <b class="num" data-out="textSize"></b></label><input type="range" id="textSize" min="16" max="160" value="56"></div>
+          <div class="f file-pick"><img id="logoThumb" alt="Logo" hidden><button type="button" class="btn-sm" id="logoPick">Add logo</button><button type="button" class="link" id="logoClear" hidden>Remove</button><input type="file" id="logoFile" accept="image/*" hidden></div>
+          <div class="two" id="logoFields" hidden>
+            <div class="f"><div class="lbl">Position</div><div class="grid9" id="logoPos"></div></div>
+            <div>
+              <div class="f"><label>Size <b class="num" data-out="logoSize"></b></label><input type="range" id="logoSize" min="4" max="60" value="16"></div>
+              <div class="f"><label>Opacity <b class="num" data-out="logoAlpha"></b></label><input type="range" id="logoAlpha" min="10" max="100" value="100"></div>
+            </div>
+          </div>
+        </div>
+      </details>
+
+      <details name="tpl">
+        <summary>Watermark <span class="tag" id="wmTag">Off</span></summary>
+        <div class="inner">
+          <div class="f"><div class="seg full" id="wmSeg"><button type="button" data-v="off" class="on">Off</button><button type="button" data-v="corner">Corner</button><button type="button" data-v="center">Center</button><button type="button" data-v="tiled">Tiled</button></div></div>
+          <div id="wmFields" hidden>
+            <div class="f row"><input type="text" id="wmText" value="© cgradying" aria-label="Watermark text"><input type="color" id="wmColor" value="#ffffff" aria-label="Watermark color" style="width:44px"></div>
+            <label class="chk"><input type="checkbox" id="wmLogo"> Use logo instead</label>
+            <div class="two">
+              <div class="f"><label>Size <b class="num" data-out="wmSize"></b></label><input type="range" id="wmSize" min="2" max="30" value="5"></div>
+              <div class="f"><label>Opacity <b class="num" data-out="wmAlpha"></b></label><input type="range" id="wmAlpha" min="5" max="100" value="35"></div>
+            </div>
+          </div>
+        </div>
+      </details>
+    </div>
+  </div>
+
+  <!-- ===== Pinned export ===== -->
+  <footer class="dock">
+    <div class="row between">
+      <div class="seg" id="fmtSeg"><button type="button" data-v="jpeg" class="on">JPEG</button><button type="button" data-v="png">PNG</button></div>
+      <div class="row"><span class="lbl-inline">Upscale</span><div class="seg" id="upSeg" title="When a photo is smaller than its output size"><button type="button" data-v="off">Off</button><button type="button" data-v="lanczos" class="on">Auto</button><button type="button" data-v="ai" id="upAi">AI</button></div></div>
+    </div>
+    <details class="more">
+      <summary>More options</summary>
+      <div class="inner">
+        <div class="f"><label>JPEG quality <b class="num" data-out="quality"></b></label><input type="range" id="quality" min="70" max="100" value="95"></div>
+        <label class="chk"><input type="checkbox" id="enhance"> Auto enhance</label>
+        <div class="two">
+          <div class="f"><label for="event">Event</label><input type="text" id="event" placeholder="e.g. summit"></div>
+          <div class="f"><label for="rename">File names</label><input type="text" id="rename" placeholder="{name}_{preset}"></div>
+        </div>
+        <div class="tokens" id="tokens"><button type="button">{name}</button><button type="button">{event}</button><button type="button">{date}</button><button type="button">{n:03}</button><button type="button">{preset}</button></div>
+        <p class="sample" id="sample"></p>
+        <div class="two">
+          <div class="f"><label for="artist">Artist</label><input type="text" id="artist" value="cgradying"></div>
+          <div class="f"><label for="copyright">Copyright</label><input type="text" id="copyright" value="© cgradying"></div>
+        </div>
+      </div>
+    </details>
+    <button class="btn" id="export" disabled><svg class="ico"><use href="#i-down"/></svg><span id="exportLabel">Add photos to export</span></button>
+    <div class="prog" id="prog" hidden><div class="lbl"><span id="progStage">Uploading</span><b class="num" id="progCount"></b></div><div class="bar" id="progBar"><i></i></div></div>
+    <p class="status" id="status" role="status"></p>
+    <p class="credit"><span id="version"></span> · made by <a href="https://github.com/cGradying" target="_blank" rel="noopener">cgradying</a></p>
+  </footer>
 </aside>
 
 <main>
   <div id="bar">
-    <div class="nav"><button type="button" id="prev" aria-label="Previous photo"><svg class="ico"><use href="#i-left"/></svg></button><button type="button" id="next" aria-label="Next photo"><svg class="ico"><use href="#i-right"/></svg></button></div>
+    <div class="nav"><button type="button" id="prev" aria-label="Previous photo (←)" title="Previous (←)"><svg class="ico"><use href="#i-left"/></svg></button><button type="button" id="next" aria-label="Next photo (→)" title="Next (→)"><svg class="ico"><use href="#i-right"/></svg></button></div>
     <span class="name" id="photoName">No photos</span><span class="dims num" id="photoDims"></span>
-    <div class="seg" id="viewSeg" hidden><button type="button" data-v="single" class="on">Single</button><button type="button" data-v="grid">Batch grid</button></div>
-    <div id="hint">
-      <span class="keys"><kbd>←</kbd> <kbd>→</kbd> switch · <kbd>Del</kbd> remove · <kbd>⌘V</kbd> paste</span>
-      <button type="button" class="btn-sm" id="clearAll" hidden>Clear all</button>
+    <div class="bar-end">
+      <div class="seg" id="viewSeg" hidden><button type="button" data-v="single" class="on">One</button><button type="button" data-v="grid">All</button></div>
+      <details class="menu" id="historyMenu"><summary class="btn-sm">History <span class="num" id="histCount"></span></summary><div class="menu-list"><ul class="history" id="history"><li class="empty">None yet.</li></ul></div></details>
+      <button type="button" class="btn-sm" id="clearAll" hidden title="Remove all photos">Clear</button>
     </div>
   </div>
   <div id="stage">

@@ -28,22 +28,27 @@ a{color:var(--lav);text-underline-offset:3px}
 a:hover{color:#fff}
 
 /* ---- side panel ---- */
-aside{width:356px;flex:none;background:var(--panel);border-right:1px solid var(--line);overflow:auto;padding:0 14px 20px;scrollbar-color:var(--line) transparent;display:flex;flex-direction:column}
-aside>*{flex-shrink:0}
-.brand{position:relative;margin:0 -14px 2px;padding:16px 14px 14px;overflow:hidden;border-bottom:1px solid var(--line)}
+aside{width:340px;flex:none;background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0}
+.scroll{flex:1;min-height:0;overflow:auto;padding:4px 16px 12px;scrollbar-color:var(--line) transparent}
+.dock{flex:none;padding:12px 16px 10px;border-top:1px solid var(--line);background:var(--panel);display:grid;gap:8px}
+.dock .btn{margin:0}
+.dock .more{border:0;padding:0}
+.dock .more>summary{padding:2px 0;font-size:11px;color:var(--mut)}
+.brand{flex:none;position:relative;padding:14px 16px 12px;overflow:hidden;border-bottom:1px solid var(--line)}
 .brand canvas{position:absolute;inset:0;width:100%;height:100%;opacity:.55}
 .brand>*:not(canvas){position:relative}
-aside h1{font:700 17px var(--pixel);letter-spacing:.04em;margin:0 0 3px;color:#fff}
-aside p.sub{margin:0 0 12px;color:var(--mut);font-size:12px;max-width:34ch}
-#saved{color:var(--lav);opacity:.45;transition:opacity .3s}
-#saved.flash{opacity:1}
+aside h1{font:700 16px var(--pixel);letter-spacing:.04em;margin:0 0 10px;color:#fff}
 .tabs{display:flex;gap:2px;padding:3px;background:var(--well);border:1px solid var(--line);border-radius:9px}
 .tabs button{flex:1;border:0;background:transparent;color:var(--mut);padding:8px 10px;border-radius:6px;font:700 12px var(--ui);letter-spacing:.04em;transition:color .2s,background .25s var(--ease)}
 .tabs button:hover{color:var(--txt)}
 .tabs button.on{background:var(--acc2);color:#fff}
 
 details{border-top:1px solid var(--line);padding:0 0 4px}
-.tool>details:first-child{border-top:0}
+.tool>details:first-of-type{border-top:0}
+.library{margin:8px 0 6px}
+.library select{flex:1}
+.between{justify-content:space-between}
+.lbl-inline{color:var(--mut);font-size:12px;gap:6px}
 details::details-content{block-size:0;overflow:hidden;transition:block-size .28s var(--ease),content-visibility .28s allow-discrete}
 details[open]::details-content{block-size:auto}
 summary{cursor:pointer;padding:11px 0;font:700 12px var(--ui);letter-spacing:.07em;text-transform:uppercase;color:var(--head);list-style:none;display:flex;justify-content:space-between;align-items:center;gap:8px;user-select:none}
@@ -117,14 +122,6 @@ small.note{display:block;color:var(--mut);font-size:11.5px;margin:6px 0 0}
 .bar.indet i{width:35%;transform:none;transition:none;animation:slide 1s steps(8) infinite}
 @keyframes slide{from{transform:translateX(-100%)}to{transform:translateX(290%)}}
 
-.lib{list-style:none;margin:0 0 8px;padding:0;display:grid;gap:2px}
-.lib li{display:flex;align-items:center;gap:6px;padding:5px 8px;margin:0 -8px;border-radius:6px}
-.lib li:hover{background:var(--hover)}
-.lib li button.load{flex:1;text-align:left;background:none;border:0;padding:0;color:var(--txt)}
-.lib li.cur button.load{color:var(--lav);font-weight:700}
-.lib li .x{background:none;border:0;color:var(--mut);padding:2px;display:grid;place-items:center}
-.lib li .x:hover{color:var(--bad)}
-.lib .empty{color:var(--mut)}
 
 .history{list-style:none;margin:0;padding:0;display:grid;gap:1px}
 .history a{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:7px 8px;margin:0 -8px;border-radius:6px;color:var(--txt);text-decoration:none}
@@ -132,8 +129,16 @@ small.note{display:block;color:var(--mut);font-size:11.5px;margin:6px 0 0}
 .history a span{color:var(--mut)}
 .history .empty{color:var(--mut)}
 
-.credit{margin-top:auto;padding-top:14px;border-top:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:12px;color:var(--mut)}
-.credit b{font:400 11px var(--pixel);color:var(--head);letter-spacing:.04em}
+.credit{margin:0;font-size:11px;color:var(--mut);text-align:center}
+.credit #version{font:400 10px var(--pixel);letter-spacing:.04em}
+.menu{position:relative;border:0;padding:0}
+.menu>summary{padding:6px 10px;list-style:none;text-transform:none;letter-spacing:0;font-weight:600}
+.menu>summary::after{content:none}
+.menu .menu-list{position:absolute;right:0;top:calc(100% + 6px);z-index:20;min-width:200px;max-height:60vh;overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:6px;box-shadow:0 14px 40px rgba(0,0,0,.5);animation:rise .2s var(--ease)}
+.menu .menu-list>button{display:block;width:100%;text-align:left;background:none;border:0;padding:7px 10px;border-radius:6px;color:var(--txt)}
+.menu .menu-list>button:hover{background:var(--hover)}
+.menu .history a{margin:0}
+.menu::details-content{block-size:auto;overflow:visible;transition:none}
 
 /* ---- main ---- */
 main{flex:1;min-width:0;display:flex;flex-direction:column}
@@ -144,7 +149,7 @@ main{flex:1;min-width:0;display:flex;flex-direction:column}
 .nav button{width:28px;height:28px;display:grid;place-items:center;border:1px solid var(--line);border-radius:6px;background:transparent;color:var(--txt);transition:border-color .15s}
 .nav button:hover:not(:disabled){border-color:var(--acc)}
 .nav button:disabled{opacity:.35;cursor:default}
-#hint{color:var(--mut);font-size:12px;margin-left:auto;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.bar-end{margin-left:auto;display:flex;gap:8px;align-items:center}
 
 #stage{flex:1;min-height:0;overflow:auto;background:var(--stage);position:relative;scrollbar-color:var(--line) transparent}
 #stage.over::after{content:"Drop to add";position:absolute;inset:12px;display:grid;place-items:center;border:2px dashed var(--acc);border-radius:10px;background:#7c3aed22;font:700 18px var(--pixel);color:#fff;pointer-events:none;animation:pop .25s var(--ease)}
@@ -182,16 +187,9 @@ main{flex:1;min-width:0;display:flex;flex-direction:column}
 
 /* template single view */
 .tpl-single{display:grid;place-items:center;min-height:100%;padding:34px 24px 24px}
-.ruler{position:relative;padding:22px 0 0 34px}
-.ruler canvas{display:block;max-width:100%;box-shadow:0 14px 44px rgba(0,0,0,.5);animation:swap .32s var(--ease)}
-.ruler .rx,.ruler .ry{position:absolute;color:var(--mut);font:400 10.5px var(--pixel);display:flex;align-items:center;gap:6px}
-.ruler .rx{top:0;left:34px;right:0;justify-content:center}
-.ruler .rx::before,.ruler .rx::after{content:"";flex:1;height:6px;border:solid var(--line-2);border-width:0 1px 1px}
-.ruler .ry{left:0;top:22px;bottom:0;width:26px;flex-direction:column;justify-content:center}
-.ruler .ry::before,.ruler .ry::after{content:"";flex:1;width:6px;border:solid var(--line-2);border-width:1px 0 1px 1px;align-self:flex-end}
-.ruler .ry span{writing-mode:vertical-rl;transform:rotate(180deg)}
 @keyframes swap{from{opacity:.4;transform:scale(.985)}}
-.readout{display:flex;flex-wrap:wrap;gap:6px 14px;justify-content:center;margin-top:14px;font-size:12px;color:var(--mut)}
+.tpl-single canvas{display:block;max-width:100%;box-shadow:0 14px 44px rgba(0,0,0,.5);animation:swap .32s var(--ease)}
+.readout{display:flex;flex-wrap:wrap;gap:6px 12px;justify-content:center;align-items:center;margin-top:14px;font-size:12px;color:var(--mut)}
 .readout b{color:var(--txt);font-weight:600}
 .badge{font:400 10.5px var(--pixel);padding:2px 6px;border-radius:4px;background:#7c3aed33;color:var(--lav);letter-spacing:.04em}
 .badge.warn{background:#ffcf7022;color:var(--warn)}
@@ -211,10 +209,11 @@ main{flex:1;min-width:0;display:flex;flex-direction:column}
 
 @media (max-width:860px){
   body{flex-direction:column;overflow:auto;height:auto}
-  aside{width:auto;border-right:0;border-top:1px solid var(--line);order:2;overflow:visible}
+  aside{width:auto;border-right:0;border-top:1px solid var(--line);order:2}
+  .scroll{overflow:visible}
+  .dock{position:sticky;bottom:0;box-shadow:0 -10px 30px rgba(0,0,0,.4)}
   main{order:1;min-height:70vh}
   #stage{min-height:56vh}
-  #hint .keys{display:none}
   .tile canvas{max-height:160px}
   .tpl-single{padding:20px 12px}
 }

@@ -17,7 +17,7 @@ const PRESETS = [
   {id:'fb_feed', group:'Facebook', name:'Feed', long:2048, on:true},
   {id:'fb_story', group:'Facebook', name:'Story', w:1080, h:1920},
 ];
-const UNITS = {mt:'%', ms:'%', mb:'%', logoSize:'%', wmSize:'%', logoAlpha:'%', wmAlpha:'%', border:' px', radius:' px', titleSize:' px', subSize:' px', quality:''};
+const UNITS = {padAmt:'%', textSpace:'%', logoSize:'%', wmSize:'%', logoAlpha:'%', wmAlpha:'%', border:' px', radius:' px', textSize:' px', quality:''};
 const BROWSER_TYPES = /^image\/(jpeg|png|webp|gif|bmp|avif|svg\+xml)$/;
 const SERVER_EXT = /\.(tiff?|heic|heif|avif|dng|arw|cr2|cr3|nef|raf|orf|rw2)$/i;
 
@@ -39,12 +39,12 @@ const SETTINGS_KEY = 'postprep.v2';
 function saveSettings() {
   const s = {inputs: {}, segs: {}};
   document.querySelectorAll('aside input[id], aside select[id]').forEach(i => {
-    if (i.type === 'file' || i.id === 'libName') return;
+    if (i.type === 'file' || i.id === 'tplPick') return;
     s.inputs[i.id] = i.type === 'checkbox' ? i.checked : i.value;
   });
   document.querySelectorAll('aside .seg[id], #viewSeg').forEach(seg => s.segs[seg.id] = segVal(seg.id));
   s.presets = chosen(); s.tool = App.tool;
-  if (store.set(SETTINGS_KEY, s)) { $('saved').classList.add('flash'); clearTimeout(saveSettings.t); saveSettings.t = setTimeout(() => $('saved').classList.remove('flash'), 600); }
+  store.set(SETTINGS_KEY, s);
 }
 function loadSettings() {
   const s = store.get(SETTINGS_KEY); if (!s) return;
@@ -70,13 +70,9 @@ function syncLabels() {
   const r = segVal('ratios');
   $('customRatio').hidden = r !== 'custom';
   $('splitFields').hidden = segVal('splitSeg') !== 'on';
-  $('padHex').textContent = $('pad').value;
   document.querySelectorAll('.swatch').forEach(s => s.classList.toggle('on', s.dataset.c === $('pad').value));
   $('splitTag').textContent = splitOn() ? `${$('cols').value} × ${ratio().join(':')}` : 'Off';
   $('outCount').textContent = `${chosen().length} selected`;
-  $('qualityRow').style.visibility = segVal('fmtSeg') === 'png' ? 'hidden' : '';
-  const up = segVal('upSeg');
-  $('upNote').textContent = up === 'ai' ? 'Real-ESRGAN ×4' : up === 'lanczos' ? 'resize + sharpen' : 'keep native size';
   $('sample').innerHTML = samplName();
   App.tools[App.tool]?.sync?.();
 }
@@ -265,7 +261,7 @@ function renderPost() {
       const cols = clampCols(+$('cols').value), r = ratio(), L = splitLayout(p.w, p.h, cols, r);
       const panelW = Math.floor(L.cw / cols), up = segVal('upSeg') !== 'off';
       const outW = up ? 1080 : Math.min(1080, panelW), outH = Math.round(outW * r[1] / r[0]);
-      block.innerHTML = `<h3>Carousel split <span class="num">${cols} panels · each ${outW}×${outH}${L.cw > p.w || L.ch > p.h ? ' · padded' : ' · exact fit'}</span></h3>`;
+      block.innerHTML = `<h3>Carousel <span class="num">${cols} × ${outW}×${outH}${L.cw > p.w || L.ch > p.h ? ' · padded' : ''}</span></h3>`;
       const [c, ctx, s] = canvasFor(L.cw, L.ch, 1400);
       ctx.fillStyle = $('pad').value; ctx.fillRect(0, 0, c.width, c.height);
       drawPhoto(ctx, p, 0, 0, p.w, p.h, L.ox * s, L.oy * s, p.w * s, p.h * s);
@@ -288,7 +284,7 @@ function renderPost() {
   const picks = PRESETS.filter(x => chosen().includes(x.id));
   if (picks.length) {
     const block = document.createElement('section'); block.className = 'block'; block.style.setProperty('--i', i++);
-    block.innerHTML = `<h3>Files for this photo <span>cropped from the center, as they'll upload</span></h3>`;
+    block.innerHTML = `<h3>Files</h3>`;
     const tiles = document.createElement('div'); tiles.className = 'tiles';
     picks.forEach((pr, k) => {
       const r = fitRect(p.w, p.h, pr), [c, ctx] = canvasFor(r.cw, r.ch, 600);
@@ -296,7 +292,7 @@ function renderPost() {
       const fig = document.createElement('figure'); fig.className = 'tile'; fig.dataset.id = pr.id; fig.style.setProperty('--i', k); fig.append(c);
       const up = segVal('upSeg');
       fig.insertAdjacentHTML('beforeend', `<figcaption><b>${pr.group} ${pr.name.toLowerCase()}</b><span class="num">${r.out.join('×')}</span></figcaption>`
-        + (r.small ? (up !== 'off' ? `<span class="badge">${up === 'ai' ? 'AI' : 'LANCZOS'} UPSCALE ×${(r.out[0] / r.cw).toFixed(1)}</span>` : `<span class="warn">Smaller than ${pr.w || pr.long} px. Exported at native size, or turn on upscaling.</span>`) : ''));
+        + (r.small ? (up !== 'off' ? `<span class="badge">UPSCALED ×${(r.out[0] / r.cw).toFixed(1)}</span>` : `<span class="warn">Too small, kept at native size</span>`) : ''));
       tiles.append(fig);
     });
     block.append(tiles); out.append(block);
@@ -304,7 +300,7 @@ function renderPost() {
   const orig = +segVal('origSeg');
   if (orig) {
     const block = document.createElement('section'); block.className = 'block'; block.style.setProperty('--i', i++);
-    block.innerHTML = `<h3>Upscaled original <span class="num">${p.w}×${p.h} → <b>${p.w * orig}×${p.h * orig}</b> · ${segVal('upSeg') === 'ai' ? 'Real-ESRGAN' : 'Lanczos + sharpen'}</span></h3>`;
+    block.innerHTML = `<h3>Upscaled original <span class="num">${p.w * orig}×${p.h * orig}</span></h3>`;
     out.append(block);
   }
   if (!picks.length && !splitOn() && !orig) out.innerHTML = '<p class="skip">Pick at least one output on the left.</p>';
@@ -462,12 +458,14 @@ function drawFade(canvas, cols, rows, from, seed = 7) {
 }
 const paintFades = () => { pixelFade($('brandFade'), 10, 'tr'); if (!$('empty').hidden) pixelFade($('fade'), 22, 'br'); };
 
+addEventListener('click', e => document.querySelectorAll('details.menu[open]').forEach(m => { if (!m.contains(e.target) || e.target.closest('.menu-list a, .menu-list button')) m.open = false; }));
+
 // ---------- boot ----------
 async function boot() {
   loadSettings(); applyTool(); App.view = segVal('viewSeg') || 'single';
   try {
     App.caps = await (await fetch('/api/capabilities')).json();
-    $('version').textContent = 'v' + App.caps.version;
+    $('version').textContent = 'POST PREP v' + App.caps.version;
   } catch {}
   $('upAi').hidden = !App.caps.ai_upscale;
   if (!App.caps.ai_upscale && segVal('upSeg') === 'ai') setSeg('upSeg', 'lanczos');
