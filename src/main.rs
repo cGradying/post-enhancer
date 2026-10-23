@@ -1,6 +1,10 @@
-mod presets;
+mod enhance;
+mod jobs;
+mod media;
 mod split;
 mod store;
+mod template;
+mod upscale;
 
 use axum::{
     body::Body,
@@ -11,37 +15,18 @@ use axum::{
     routing::{get, post},
     Form, Json, Router,
 };
-use rayon::prelude::*;
 use serde::Deserialize;
 use std::{
     hash::{BuildHasher, Hasher},
-    io::Write,
-    sync::Arc,
+    sync::{atomic::Ordering, Arc},
 };
 use store::Store;
 
 struct App {
     store: Store,
+    jobs: jobs::Jobs,
     password: Option<String>,
     token: String,
-}
-
-#[derive(Deserialize, Default)]
-struct Options {
-    #[serde(default)]
-    presets: Vec<String>,
-    split: Option<SplitOptions>,
-}
-
-#[derive(Deserialize)]
-struct SplitOptions {
-    cols: u32,
-    rw: u32,
-    rh: u32,
-    pad: String,
-    /// Only split photos at least 1.5x wider than tall; the rest just get presets.
-    #[serde(default)]
-    wide_only: bool,
 }
 
 #[tokio::main]
@@ -50,17 +35,24 @@ async fn main() {
     if password.is_none() {
         eprintln!("APP_PASSWORD not set: running without a login gate");
     }
-    let app = Arc::new(App { store: Store::from_env().await, password, token: random_token() });
+    let app = Arc::new(App { store: Store::from_env().await, jobs: Default::default(), password, token: random_token() });
+    let max_mb: usize = std::env::var("MAX_UPLOAD_MB").ok().and_then(|v| v.parse().ok()).unwrap_or(1024);
 
     let router = Router::new()
         .route("/", get(|| async { Html(include_str!("../static/index.html")) }))
-        .route("/api/export", post(export))
+        .route("/app.css", get(|| async { ([(header::CONTENT_TYPE, "text/css")], include_str!("../static/app.css")) }))
+        .route("/app.js", get(|| async { ([(header::CONTENT_TYPE, "text/javascript")], include_str!("../static/app.js")) }))
+        .route("/template.js", get(|| async { ([(header::CONTENT_TYPE, "text/javascript")], include_str!("../static/template.js")) }))
+        .route("/api/jobs", post(create_job))
+        .route("/api/jobs/{id}", get(job_status))
+        .route("/api/preview", post(preview))
+        .route("/api/capabilities", get(capabilities))
         .route("/api/batches", get(list_batches))
         .route("/api/batches/{id}", get(get_batch))
         .route_layer(middleware::from_fn_with_state(app.clone(), require_login))
         .route("/login", get(|| async { Html(LOGIN_PAGE) }).post(login))
         .route("/fonts/{name}", get(font))
-        .layer(DefaultBodyLimit::max(200 * 1024 * 1024))
+        .layer(DefaultBodyLimit::max(max_mb * 1024 * 1024))
         .with_state(app);
 
     let port = std::env::var("PORT").unwrap_or("8080".into());
@@ -138,108 +130,106 @@ fn random_token() -> String {
     format!("{:016x}{:016x}", part(), part())
 }
 
-// ---- export ----
+// ---- jobs ----
 
-async fn export(State(app): State<Arc<App>>, mut form: Multipart) -> Response {
-    let mut opts = Options::default();
+async fn create_job(State(app): State<Arc<App>>, mut form: Multipart) -> Response {
+    let mut opts = None;
     let mut files = Vec::new();
-    while let Ok(Some(field)) = form.next_field().await {
-        match field.name() {
-            Some("options") => match field.text().await.map(|t| serde_json::from_str(&t)) {
-                Ok(Ok(o)) => opts = o,
-                _ => return (StatusCode::BAD_REQUEST, "bad options").into_response(),
+    let mut layers = jobs::Layers { under: None, over: None };
+    loop {
+        let field = match form.next_field().await {
+            Ok(Some(f)) => f,
+            Ok(None) => break,
+            Err(e) => return (StatusCode::BAD_REQUEST, e.to_string()).into_response(),
+        };
+        let field_name = field.name().unwrap_or("").to_string();
+        let file_name = field.file_name().unwrap_or("photo").to_string();
+        let bytes = match field.bytes().await {
+            Ok(b) => b,
+            Err(e) => return (StatusCode::BAD_REQUEST, e.to_string()).into_response(),
+        };
+        match field_name.as_str() {
+            "options" => match serde_json::from_slice::<jobs::Options>(&bytes) {
+                Ok(o) => opts = Some(o),
+                Err(e) => return (StatusCode::BAD_REQUEST, format!("bad options: {e}")).into_response(),
             },
-            Some("files") => {
-                let name = stem(field.file_name().unwrap_or("photo"));
-                match field.bytes().await {
-                    Ok(b) => files.push((name, b)),
-                    Err(e) => return (StatusCode::BAD_REQUEST, e.to_string()).into_response(),
-                }
+            "files" => files.push(jobs::Upload { name: file_name, bytes }),
+            "under" | "over" => {
+                let layer = match image::load_from_memory(&bytes) {
+                    Ok(i) => i.to_rgba8(),
+                    Err(e) => return (StatusCode::BAD_REQUEST, format!("bad {field_name} layer: {e}")).into_response(),
+                };
+                if field_name == "under" { layers.under = Some(layer) } else { layers.over = Some(layer) }
             }
             _ => {}
         }
     }
+    let Some(opts) = opts else { return (StatusCode::BAD_REQUEST, "missing options").into_response() };
     if files.is_empty() {
         return (StatusCode::BAD_REQUEST, "no files").into_response();
     }
 
-    let zip = match tokio::task::spawn_blocking(move || build_zip(&files, &opts)).await {
-        Ok(Ok(z)) => z,
-        Ok(Err(e)) => return (StatusCode::INTERNAL_SERVER_ERROR, e).into_response(),
-        Err(e) => return (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()).into_response(),
-    };
     let id = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_millis().to_string();
-    if let Err(e) = app.store.put(&id, zip.clone()).await {
-        eprintln!("store batch {id}: {e}");
-    }
-    zip_response(&id, zip)
+    let job = app.jobs.create(&id, files.len());
+    let (app2, id2) = (app.clone(), id.clone());
+    tokio::spawn(async move {
+        let worker = job.clone();
+        let result = tokio::task::spawn_blocking(move || jobs::run(&files, &opts, &layers, &worker)).await;
+        let state = match result {
+            Ok(Ok(zip)) => match app2.store.put(&id2, zip).await {
+                Ok(()) => jobs::State::Done { batch_id: id2 },
+                Err(e) => jobs::State::Failed { error: format!("couldn't save the batch: {e}") },
+            },
+            Ok(Err(e)) => jobs::State::Failed { error: e },
+            Err(e) => jobs::State::Failed { error: e.to_string() },
+        };
+        job.finish(state);
+    });
+    Json(serde_json::json!({ "id": id })).into_response()
 }
 
-fn build_zip(files: &[(String, axum::body::Bytes)], opts: &Options) -> Result<Vec<u8>, String> {
-    let pad = opts.split.as_ref().map(|s| parse_hex(&s.pad)).unwrap_or(image::Rgb([255, 255, 255]));
-    let outputs: Vec<Result<Vec<(String, Vec<u8>)>, String>> = files
-        .par_iter()
-        .map(|(name, bytes)| {
-            let src = presets::decode(bytes).map_err(|e| format!("{name}: {e}"))?;
-            let icc = src.icc.as_deref();
-            let mut out = Vec::new();
-            for p in presets::PRESETS.iter().filter(|p| opts.presets.iter().any(|id| id == p.id)) {
-                let img = presets::fit(&src.img, &p.size);
-                out.push((format!("{}/{name}_{}.jpg", p.folder, p.id), presets::encode_jpeg(&img, icc)));
-            }
-            let wide = src.img.width() as u64 * 10 >= src.img.height() as u64 * 15;
-            if let Some(s) = opts.split.as_ref().filter(|s| wide || !s.wide_only) {
-                let panels = split::split(&src.img, s.cols.clamp(1, 20), (s.rw, s.rh), pad);
-                let n = panels.len();
-                let target = presets::Size::Exact(1080, (1080 * s.rh.max(1) as u64 / s.rw.max(1) as u64) as u32);
-                for (i, panel) in panels.iter().enumerate() {
-                    let img = presets::fit(panel, &target);
-                    out.push((format!("split/{name}_{}of{n}.jpg", i + 1), presets::encode_jpeg(&img, icc)));
-                }
-            }
-            Ok(out)
-        })
-        .collect();
-
-    let mut zip = zip::ZipWriter::new(std::io::Cursor::new(Vec::new()));
-    let stored = zip::write::SimpleFileOptions::default().compression_method(zip::CompressionMethod::Stored);
-    let mut errors = String::new();
-    for result in outputs {
-        match result {
-            Ok(entries) => {
-                for (path, data) in entries {
-                    zip.start_file(path, stored).map_err(|e| e.to_string())?;
-                    zip.write_all(&data).map_err(|e| e.to_string())?;
-                }
-            }
-            Err(e) => errors.push_str(&format!("{e}\n")),
-        }
-    }
-    if !errors.is_empty() {
-        zip.start_file("errors.txt", stored).map_err(|e| e.to_string())?;
-        zip.write_all(errors.as_bytes()).map_err(|e| e.to_string())?;
-    }
-    Ok(zip.finish().map_err(|e| e.to_string())?.into_inner())
+async fn job_status(State(app): State<Arc<App>>, Path(id): Path<String>) -> Response {
+    let Some(job) = app.jobs.get(&id) else { return StatusCode::NOT_FOUND.into_response() };
+    let state = job.state.lock().unwrap().clone();
+    let mut v = serde_json::to_value(state).unwrap();
+    v["done"] = job.done.load(Ordering::Relaxed).into();
+    v["total"] = job.total.into();
+    Json(v).into_response()
 }
 
-fn stem(file_name: &str) -> String {
-    let base = file_name.rsplit(['/', '\\']).next().unwrap_or(file_name);
-    let base = base.rsplit_once('.').map_or(base, |(s, _)| s);
-    let clean: String = base.chars().map(|c| if c.is_ascii_alphanumeric() || c == '-' || c == '_' { c } else { '_' }).collect();
-    if clean.is_empty() { "photo".into() } else { clean }
+/// A browser-viewable JPEG (≤1600 px) for formats browsers can't show: HEIC, TIFF, RAW.
+async fn preview(mut form: Multipart) -> Response {
+    let Ok(Some(field)) = form.next_field().await else { return StatusCode::BAD_REQUEST.into_response() };
+    let name = field.file_name().unwrap_or("photo").to_string();
+    let Ok(bytes) = field.bytes().await else { return StatusCode::BAD_REQUEST.into_response() };
+    let result = tokio::task::spawn_blocking(move || {
+        let src = media::decode(&bytes, &name)?;
+        let (w, h) = src.img.dimensions();
+        let s = (1600.0 / w.max(h) as f64).min(1.0);
+        let small = media::resize(&src.img, ((w as f64 * s) as u32).max(1), ((h as f64 * s) as u32).max(1));
+        let jpg = media::encode(&small, media::Format::Jpeg, 85, src.icc.as_deref(), &media::Meta::default());
+        Ok::<_, String>((jpg, w, h))
+    })
+    .await;
+    match result {
+        Ok(Ok((jpg, w, h))) => ([(header::CONTENT_TYPE, "image/jpeg".to_string()), (header::HeaderName::from_static("x-source-size"), format!("{w}x{h}"))], jpg).into_response(),
+        Ok(Err(e)) => (StatusCode::UNPROCESSABLE_ENTITY, e).into_response(),
+        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()).into_response(),
+    }
 }
 
-fn parse_hex(s: &str) -> image::Rgb<u8> {
-    let s = s.trim_start_matches('#');
-    let c = |i: usize| s.get(i..i + 2).and_then(|h| u8::from_str_radix(h, 16).ok()).unwrap_or(255);
-    image::Rgb([c(0), c(2), c(4)])
+async fn capabilities() -> Json<serde_json::Value> {
+    Json(serde_json::json!({
+        "ai_upscale": upscale::ai_bin().is_some(),
+        "heic": cfg!(target_os = "macos"),
+        "version": env!("CARGO_PKG_VERSION"),
+    }))
 }
 
 fn zip_response(id: &str, zip: Vec<u8>) -> Response {
     let mut h = HeaderMap::new();
     h.insert(header::CONTENT_TYPE, "application/zip".parse().unwrap());
     h.insert(header::CONTENT_DISPOSITION, format!("attachment; filename=\"post-prep-{id}.zip\"").parse().unwrap());
-    h.insert("x-batch-id", id.parse().unwrap());
     (h, Body::from(zip)).into_response()
 }
 

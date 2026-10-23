@@ -4,160 +4,14 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Post Prep</title>
-<style>
-@font-face{font-family:Silkscreen;font-weight:400;font-display:swap;src:url(/fonts/silkscreen-400.woff2) format("woff2")}
-@font-face{font-family:Silkscreen;font-weight:700;font-display:swap;src:url(/fonts/silkscreen-700.woff2) format("woff2")}
-@font-face{font-family:"Space Grotesk";font-weight:400;font-display:swap;src:url(/fonts/space-grotesk-400.woff2) format("woff2")}
-@font-face{font-family:"Space Grotesk";font-weight:700;font-display:swap;src:url(/fonts/space-grotesk-700.woff2) format("woff2")}
-/* Tokens from pixel-id-maker (AWS Student Builder Group pixel ID tools). */
-:root{
-  --bg:#14111c;--panel:#1b1626;--well:#120f1b;--stage:#0f0c17;--line:#352c4d;--line-2:#4a3f68;
-  --txt:#ece8f7;--mut:#9a90b8;--head:#cfc2f5;
-  --acc:#a66bff;--acc2:#7c3aed;--acc-ink:#12091f;--lav:#b98cff;
-  --warn:#ffcf70;--bad:#ff8fa3;--good:#7ee2b0;
-  --pixel:"Silkscreen",ui-monospace,monospace;
-  --ui:"Space Grotesk",system-ui,-apple-system,sans-serif;
-  color-scheme:dark;
-}
-*{box-sizing:border-box}
-[hidden]{display:none!important}
-html,body{height:100%}
-body{margin:0;font:13px/1.4 var(--ui);background:var(--bg);color:var(--txt);display:flex;overflow:hidden}
-::selection{background:var(--acc2);color:#fff}
-:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
-button,input{font:inherit;color:inherit}
-button{cursor:pointer}
-.num{font-variant-numeric:tabular-nums}
-.ico{width:14px;height:14px;flex:none;fill:currentColor;shape-rendering:crispEdges}
-kbd{font:600 11px var(--ui);padding:1px 5px;border:1px solid var(--line-2);border-bottom-width:2px;border-radius:4px;color:var(--txt)}
-
-/* ---- side panel ---- */
-aside{width:350px;flex:none;background:var(--panel);border-right:1px solid var(--line);overflow:auto;padding:0 14px 40px;scrollbar-color:var(--line) transparent}
-.brand{position:relative;margin:0 -14px 4px;padding:16px 14px 14px;overflow:hidden}
-.brand canvas{position:absolute;inset:0;width:100%;height:100%;opacity:.55}
-.brand>*:not(canvas){position:relative}
-aside h1{font:700 17px var(--pixel);letter-spacing:.04em;margin:0 0 3px;color:#fff}
-aside p.sub{margin:0;color:var(--mut);font-size:12px;max-width:30ch}
-#saved{color:var(--lav);opacity:.45;transition:opacity .3s}
-#saved.flash{opacity:1}
-details{border-top:1px solid var(--line);padding:2px 0 6px}
-summary{cursor:pointer;padding:10px 0;font:700 12px var(--ui);letter-spacing:.07em;text-transform:uppercase;color:var(--head);list-style:none;display:flex;justify-content:space-between;align-items:center;gap:8px}
-summary::-webkit-details-marker{display:none}
-summary::after{content:"+";color:var(--mut);font-size:15px}
-details[open]>summary::after{content:"–"}
-summary .tag{margin-left:auto;font-weight:500;letter-spacing:0;text-transform:none;color:var(--mut)}
-
-.opt{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:10px;padding:6px 8px;margin:0 -8px;border-radius:6px;cursor:pointer}
-.opt:hover,.opt.hl{background:#241d33}
-.opt small{color:var(--mut);font-size:12px}
-.grp{font:400 11px var(--pixel);color:var(--mut);margin:8px 0 2px;letter-spacing:.04em}
-.grp:first-child{margin-top:0}
-input[type=checkbox]{width:16px;height:16px;margin:0;accent-color:var(--acc);cursor:pointer}
-.quick{display:flex;gap:6px;margin:8px 0 2px}
-.link{background:none;border:0;padding:0;color:var(--lav);font-size:12px;text-decoration:underline;text-underline-offset:3px}
-.link:hover{color:#fff}
-
-.f{margin:0 0 12px}
-.f>label,.f>.lbl{display:flex;justify-content:space-between;align-items:baseline;color:var(--mut);font-size:12px;margin-bottom:5px}
-.f>label b,.f>.lbl b{color:var(--txt);font-weight:600}
-.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
-.seg button{background:transparent;color:var(--mut);border:0;padding:7px 12px;font:600 12px var(--ui)}
-.seg button:hover{color:var(--txt)}
-.seg button.on{background:var(--acc2);color:#fff}
-.seg.full{display:flex}.seg.full button{flex:1}
-.row{display:flex;gap:8px;align-items:center}
-.stepper{display:flex;border:1px solid var(--line);border-radius:6px;overflow:hidden;background:var(--well)}
-.stepper button{width:34px;border:0;background:#211a30;color:var(--txt)}
-.stepper button:hover{background:var(--line)}
-.stepper input{width:48px;border:0;background:transparent;text-align:center;padding:6px 0;font-weight:700}
-.btn-sm{padding:7px 10px;border:1px solid var(--line);border-radius:6px;background:transparent;font-weight:600;font-size:12px;color:var(--txt);white-space:nowrap}
-.btn-sm:hover{border-color:var(--acc);color:#fff}
-.custom input{width:56px;background:var(--well);border:1px solid var(--line);border-radius:6px;padding:6px;text-align:center}
-.pad input[type=color]{width:44px;height:30px;padding:2px;background:var(--well);border:1px solid var(--line);border-radius:6px;cursor:pointer}
-.swatch{width:22px;height:22px;border-radius:5px;border:1px solid var(--line-2);padding:0}
-.swatch.on{outline:2px solid var(--acc);outline-offset:1px}
-.chk{display:flex;align-items:center;gap:8px;font-size:12.5px;margin:4px 0 0}
-small.note{display:block;color:var(--mut);font-size:11.5px;margin:6px 0 0}
-
-.btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;margin:6px 0;padding:11px;background:var(--acc);color:var(--acc-ink);font:700 14px var(--ui);border:0;border-radius:8px}
-.btn:hover{filter:brightness(1.08)}
-.btn:disabled{background:#2a2238;color:var(--mut);cursor:not-allowed;filter:none}
-.status{min-height:18px;margin:4px 0 0;font-size:12.5px;color:var(--mut)}
-.status.err{color:var(--bad)}
-.status.ok{color:var(--good)}
-.bar-prog{height:6px;background:var(--well);border:1px solid var(--line);border-radius:3px;overflow:hidden;margin-top:6px}
-.bar-prog i{display:block;height:100%;width:40%;background:repeating-linear-gradient(90deg,var(--acc) 0 6px,var(--acc2) 6px 12px);animation:slide 1s steps(8) infinite}
-@keyframes slide{from{transform:translateX(-100%)}to{transform:translateX(250%)}}
-
-.history{list-style:none;margin:0;padding:0;display:grid;gap:1px}
-.history a{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:7px 8px;margin:0 -8px;border-radius:6px;color:var(--txt);text-decoration:none}
-.history a:hover{background:#241d33}
-.history a span{color:var(--mut)}
-.history .empty{color:var(--mut)}
-
-/* ---- main ---- */
-main{flex:1;min-width:0;display:flex;flex-direction:column}
-#bar{display:flex;gap:10px;align-items:center;padding:10px 14px;border-bottom:1px solid var(--line);flex-wrap:wrap;min-height:51px}
-#bar .name{font-weight:700;max-width:28ch;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-#bar .dims{color:var(--mut)}
-.nav{display:inline-flex;gap:4px;align-items:center}
-.nav button{width:28px;height:28px;display:grid;place-items:center;border:1px solid var(--line);border-radius:6px;background:transparent;color:var(--txt)}
-.nav button:hover:not(:disabled){border-color:var(--acc)}
-.nav button:disabled{opacity:.35;cursor:default}
-#hint{color:var(--mut);font-size:12px;margin-left:auto;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-
-#stage{flex:1;min-height:0;overflow:auto;background:var(--stage);position:relative;scrollbar-color:var(--line) transparent}
-#stage.over::after{content:"Drop to add";position:absolute;inset:12px;display:grid;place-items:center;border:2px dashed var(--acc);border-radius:10px;background:#7c3aed22;font:700 18px var(--pixel);color:#fff;pointer-events:none}
-.empty-state{position:absolute;inset:0;display:grid;place-items:center;overflow:hidden}
-.empty-state canvas{position:absolute;inset:0;width:100%;height:100%}
-.empty-card{position:relative;display:grid;justify-items:center;gap:10px;text-align:center;padding:26px 30px;background:#1b1626e6;border:1px solid var(--line);border-radius:12px;max-width:380px;box-shadow:0 10px 40px rgba(0,0,0,.45)}
-.empty-card h2{font:700 20px var(--pixel);margin:0;color:#fff}
-.empty-card p{margin:0;color:var(--mut)}
-.empty-card .btn{width:auto;padding:10px 18px}
-
-.outputs{padding:18px;display:grid;gap:22px}
-.block h3{display:flex;align-items:baseline;gap:10px;margin:0 0 10px;font:700 12px var(--ui);letter-spacing:.07em;text-transform:uppercase;color:var(--head)}
-.block h3 span{font-weight:500;letter-spacing:0;text-transform:none;color:var(--mut)}
-.split-view canvas{display:block;max-width:100%;max-height:38vh;box-shadow:0 10px 40px rgba(0,0,0,.45)}
-.carousel{display:flex;gap:10px;margin-top:12px;overflow-x:auto;padding-bottom:4px}
-.carousel figure{margin:0;flex:none}
-.carousel canvas{display:block;height:120px;width:auto;border-radius:3px}
-.carousel figcaption{font:400 11px var(--pixel);color:var(--mut);margin-top:4px}
-.tiles{display:flex;flex-wrap:wrap;gap:16px;align-items:flex-end}
-.tile{margin:0;display:grid;gap:6px;padding:8px;border-radius:8px;border:1px solid transparent;transition:border-color .15s,background .15s}
-.tile.hl{border-color:var(--acc);background:#7c3aed14}
-.tile canvas{display:block;max-height:200px;max-width:100%;width:auto;height:auto;box-shadow:0 6px 24px rgba(0,0,0,.4)}
-.tile figcaption{display:flex;justify-content:space-between;gap:10px;font-size:12px}
-.tile figcaption span{color:var(--mut)}
-.tile .warn{color:var(--warn);font-size:11.5px;max-width:24ch}
-.skip{color:var(--mut);font-size:12.5px;margin:0}
-
-.strip{display:flex;gap:8px;overflow-x:auto;padding:10px 14px;border-top:1px solid var(--line);background:var(--bg);scrollbar-color:var(--line) transparent}
-.strip>button{flex:none;position:relative;width:68px;height:68px;padding:0;border:2px solid transparent;border-radius:6px;background:var(--panel);overflow:hidden}
-.strip>button[aria-current=true]{border-color:var(--acc)}
-.strip img{width:100%;height:100%;object-fit:cover;display:block}
-.strip .x{position:absolute;top:3px;right:3px;width:20px;height:20px;border-radius:4px;background:#000c;display:grid;place-items:center;opacity:0;transition:opacity .15s}
-.strip>button:hover .x,.strip>button:focus-visible .x{opacity:1}
-.strip .add{display:grid;place-items:center;border:1.5px dashed var(--line-2);background:transparent;color:var(--mut)}
-.strip .add:hover{border-color:var(--acc);color:#fff}
-
-@media (max-width:860px){
-  body{flex-direction:column;overflow:auto;height:auto}
-  aside{width:auto;border-right:0;border-top:1px solid var(--line);order:2;overflow:visible}
-  main{order:1;min-height:70vh}
-  #stage{min-height:52vh}
-  #hint .keys{display:none}
-  .tile canvas{max-height:160px}
-}
-@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
-</style>
+<link rel="stylesheet" href="/app.css">
 </head>
 <body>
 <!--
 THESIS: an export desk that shows every file before it exists: each output is drawn as it will upload, not described as a checkbox.
 OWN-WORLD: pixel-id-maker's tool chrome (user's repo): ink-violet panels #14111c/#1b1626, lavender accent #a66bff/#7c3aed, Silkscreen pixel headings over Space Grotesk, collapsible uppercase sections, and its purple pixel-fade field as the empty state.
-STORY: drop or paste photos, tick outputs, set the carousel split, check the drawn results, export a zip.
-FIRST VIEWPORT: 350px settings panel left with pixel-fade brand band; right a bar (photo, prev/next, shortcuts) over a dark stage holding the pixel-fade drop field or the drawn outputs; filmstrip under it.
+STORY: drop or paste photos; Post Prep makes platform sizes and carousel splits, Template frames every photo with title, logo and watermark; export a zip with live progress.
+FIRST VIEWPORT: 356px settings panel left (pixel-fade brand band, Post Prep / Template tabs, sections, Export); right a bar over a dark stage holding the drop field, the drawn outputs, or the framed photo with rulers; filmstrip under it.
 FORM: pinned by user ("use pixel-id-maker for design reference").
 -->
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -173,64 +27,198 @@ FORM: pinned by user ("use pixel-id-maker for design reference").
   <div class="brand">
     <canvas id="brandFade" aria-hidden="true"></canvas>
     <h1>POST PREP</h1>
-    <p class="sub">Instagram and Facebook files at the sizes they keep, plus seamless carousel splits. <span id="saved">Auto-saves</span></p>
+    <p class="sub">Platform-ready exports, carousel splits and photoshoot frames, at full quality. <span id="saved">Auto-saves</span></p>
+    <div class="tabs" role="tablist" aria-label="Tool">
+      <button type="button" role="tab" data-tool="post" class="on" aria-selected="true">Post Prep</button>
+      <button type="button" role="tab" data-tool="template" aria-selected="false">Template</button>
+    </div>
   </div>
 
-  <details open>
-    <summary>Outputs <span class="tag" id="outCount"></span></summary>
-    <div id="presets"></div>
-    <div class="quick"><button type="button" class="link" data-pick="ig">All Instagram</button> · <button type="button" class="link" data-pick="all">All</button> · <button type="button" class="link" data-pick="none">None</button></div>
-  </details>
+  <!-- ===== Post Prep tool ===== -->
+  <div class="tool" id="tool-post">
+    <details open>
+      <summary>Outputs <span class="tag" id="outCount"></span></summary>
+      <div class="inner">
+        <div id="presets"></div>
+        <div class="quick"><button type="button" class="link" data-pick="ig">All Instagram</button> · <button type="button" class="link" data-pick="all">All</button> · <button type="button" class="link" data-pick="none">None</button></div>
+        <div class="grp">UPSCALED ORIGINAL</div>
+        <div class="seg full" id="origSeg"><button type="button" data-v="0" class="on">None</button><button type="button" data-v="2">×2</button><button type="button" data-v="4">×4</button></div>
+      </div>
+    </details>
 
-  <details open>
-    <summary>Carousel split <span class="tag" id="splitTag">Off</span></summary>
-    <div class="f"><div class="seg full" id="splitSeg"><button type="button" data-v="off" class="on">Off</button><button type="button" data-v="on">On</button></div></div>
-    <div id="splitFields" hidden>
-      <div class="f">
-        <div class="lbl">Columns <b class="num" id="colsOut"></b></div>
-        <div class="row">
-          <div class="stepper"><button type="button" data-step="-1" aria-label="Fewer columns"><svg class="ico"><use href="#i-minus"/></svg></button><input id="cols" class="num" type="number" min="1" max="20" value="2" aria-label="Columns"><button type="button" data-step="1" aria-label="More columns"><svg class="ico"><use href="#i-plus"/></svg></button></div>
-          <button type="button" class="btn-sm" id="autoCols" title="Pick the column count that needs the least padding for this photo">Best fit</button>
+    <details open>
+      <summary>Carousel split <span class="tag" id="splitTag">Off</span></summary>
+      <div class="inner">
+        <div class="f"><div class="seg full" id="splitSeg"><button type="button" data-v="off" class="on">Off</button><button type="button" data-v="on">On</button></div></div>
+        <div id="splitFields" hidden>
+          <div class="f">
+            <div class="lbl">Columns</div>
+            <div class="row">
+              <div class="stepper"><button type="button" data-step="-1" aria-label="Fewer columns"><svg class="ico"><use href="#i-minus"/></svg></button><input id="cols" class="num" type="number" min="1" max="20" value="2" aria-label="Columns"><button type="button" data-step="1" aria-label="More columns"><svg class="ico"><use href="#i-plus"/></svg></button></div>
+              <button type="button" class="btn-sm" id="autoCols" title="Pick the column count that needs the least padding for this photo">Best fit</button>
+            </div>
+          </div>
+          <div class="f">
+            <div class="lbl">Panel ratio</div>
+            <div class="seg" id="ratios"><button type="button" data-r="1:1" class="on">1:1</button><button type="button" data-r="4:5">4:5</button><button type="button" data-r="3:4">3:4</button><button type="button" data-r="custom">Custom</button></div>
+            <div class="row" id="customRatio" hidden style="margin-top:8px"><input id="rw" class="num" type="number" min="1" value="3" aria-label="Ratio width" style="width:64px">:<input id="rh" class="num" type="number" min="1" value="4" aria-label="Ratio height" style="width:64px"></div>
+          </div>
+          <div class="f">
+            <div class="lbl">Padding color <b id="padHex">#ffffff</b></div>
+            <div class="row">
+              <input type="color" id="pad" value="#ffffff" aria-label="Padding color" style="width:44px">
+              <button type="button" class="swatch" data-c="#ffffff" style="background:#fff" aria-label="White"></button>
+              <button type="button" class="swatch" data-c="#000000" style="background:#000" aria-label="Black"></button>
+              <button type="button" class="swatch" data-c="#f4eefc" style="background:#f4eefc" aria-label="Lavender white"></button>
+              <button type="button" class="swatch" data-c="#14111c" style="background:#14111c" aria-label="Ink"></button>
+            </div>
+            <small class="note">Fills space the photo doesn't cover. No pixel of the photo is cropped.</small>
+          </div>
+          <label class="chk"><input type="checkbox" id="wideOnly" checked> Only split wide photos (1.5:1 or wider)</label>
         </div>
       </div>
-      <div class="f">
-        <div class="lbl">Panel ratio</div>
-        <div class="seg" id="ratios"><button type="button" data-r="1:1" class="on">1:1</button><button type="button" data-r="4:5">4:5 tall</button><button type="button" data-r="custom">Custom</button></div>
-        <div class="row custom" id="customRatio" hidden style="margin-top:8px"><input id="rw" class="num" type="number" min="1" value="3" aria-label="Ratio width">:<input id="rh" class="num" type="number" min="1" value="4" aria-label="Ratio height"></div>
-      </div>
-      <div class="f pad">
-        <div class="lbl">Padding color <b id="padHex">#ffffff</b></div>
-        <div class="row">
-          <input type="color" id="pad" value="#ffffff" aria-label="Padding color">
-          <button type="button" class="swatch" data-c="#ffffff" style="background:#fff" aria-label="White"></button>
-          <button type="button" class="swatch" data-c="#000000" style="background:#000" aria-label="Black"></button>
-          <button type="button" class="swatch" data-c="#f4eefc" style="background:#f4eefc" aria-label="Lavender white"></button>
-          <button type="button" class="swatch" data-c="#14111c" style="background:#14111c" aria-label="Ink"></button>
-        </div>
-        <small class="note">Fills space the photo doesn't cover. No pixel of the photo is cropped.</small>
-      </div>
-      <label class="chk"><input type="checkbox" id="wideOnly" checked> Only split wide photos (1.5:1 or wider)</label>
-    </div>
-  </details>
+    </details>
+  </div>
 
+  <!-- ===== Template tool ===== -->
+  <div class="tool" id="tool-template" hidden>
+    <details open>
+      <summary>Canvas <span class="tag num" id="canvasTag"></span></summary>
+      <div class="inner">
+        <div class="f"><div class="seg" id="canvasSeg">
+          <button type="button" data-c="1080x1440" class="on">3:4</button><button type="button" data-c="1080x1350">4:5</button><button type="button" data-c="1080x1080">1:1</button><button type="button" data-c="1440x1080">4:3</button><button type="button" data-c="1620x1080">3:2</button><button type="button" data-c="1920x1080">16:9</button><button type="button" data-c="custom">Custom</button>
+        </div></div>
+        <div class="f row">
+          <input id="cw" class="num" type="number" min="200" max="8000" value="1080" aria-label="Canvas width"> × <input id="ch" class="num" type="number" min="200" max="8000" value="1440" aria-label="Canvas height">
+          <button type="button" class="btn-sm" id="flip" title="Swap portrait and landscape">Flip</button>
+        </div>
+      </div>
+    </details>
+
+    <details open>
+      <summary>Photo</summary>
+      <div class="inner">
+        <div class="f"><div class="seg full" id="fitSeg"><button type="button" data-v="contain" class="on">Fit whole photo</button><button type="button" data-v="cover">Fill slot</button></div></div>
+        <div class="three">
+          <div class="f"><label>Top <b class="num" data-out="mt"></b></label><input type="range" id="mt" min="0" max="35" value="10"></div>
+          <div class="f"><label>Sides <b class="num" data-out="ms"></b></label><input type="range" id="ms" min="0" max="30" value="6"></div>
+          <div class="f"><label>Bottom <b class="num" data-out="mb"></b></label><input type="range" id="mb" min="0" max="35" value="12"></div>
+        </div>
+        <div class="three">
+          <div class="f"><label>Border <b class="num" data-out="border"></b></label><input type="range" id="border" min="0" max="60" value="0"></div>
+          <div class="f"><label>Corners <b class="num" data-out="radius"></b></label><input type="range" id="radius" min="0" max="120" value="0"></div>
+          <div class="f"><label>Border color</label><input type="color" id="borderColor" value="#ffffff"></div>
+        </div>
+        <label class="chk"><input type="checkbox" id="shadow" checked> Soft drop shadow</label>
+      </div>
+    </details>
+
+    <details open>
+      <summary>Background</summary>
+      <div class="inner">
+        <div class="f"><div class="seg full" id="bgSeg"><button type="button" data-v="solid" class="on">Solid</button><button type="button" data-v="blur">Blur photo</button><button type="button" data-v="fade">Pixel fade</button><button type="button" data-v="image">Image</button></div></div>
+        <div class="two" id="bgSolid"><div class="f"><label>Color</label><input type="color" id="bgColor" value="#f4eefc"></div></div>
+        <div class="f file-pick" id="bgImageRow" hidden><img id="bgThumb" alt="Background image" hidden><button type="button" class="btn-sm" id="bgPick">Choose image</button><input type="file" id="bgFile" accept="image/*" hidden></div>
+      </div>
+    </details>
+
+    <details open>
+      <summary>Text</summary>
+      <div class="inner">
+        <div class="f"><label for="title">Title</label><input type="text" id="title" placeholder="Event name" value="PHOTOSHOOT"></div>
+        <div class="f"><label for="sub">Credit line</label><input type="text" id="sub" placeholder="Photographer · date · place"></div>
+        <div class="two">
+          <div class="f"><label>Font</label><select id="font"><option>Silkscreen</option><option>Space Grotesk</option><option value="Georgia, serif">Serif</option><option value="Helvetica Neue, Arial, sans-serif">Sans</option></select></div>
+          <div class="f"><label>Color</label><input type="color" id="textColor" value="#1a0f3a"></div>
+        </div>
+        <div class="two">
+          <div class="f"><label>Title size <b class="num" data-out="titleSize"></b></label><input type="range" id="titleSize" min="16" max="160" value="56"></div>
+          <div class="f"><label>Credit size <b class="num" data-out="subSize"></b></label><input type="range" id="subSize" min="10" max="80" value="26"></div>
+        </div>
+        <div class="f"><div class="lbl">Align</div><div class="seg full" id="alignSeg"><button type="button" data-v="left">Left</button><button type="button" data-v="center" class="on">Center</button><button type="button" data-v="right">Right</button></div></div>
+      </div>
+    </details>
+
+    <details>
+      <summary>Logo <span class="tag" id="logoTag">None</span></summary>
+      <div class="inner">
+        <div class="f file-pick"><img id="logoThumb" alt="Logo" hidden><button type="button" class="btn-sm" id="logoPick">Choose logo</button><button type="button" class="link" id="logoClear">Remove</button><input type="file" id="logoFile" accept="image/*" hidden></div>
+        <div class="two">
+          <div class="f"><div class="lbl">Position</div><div class="grid9" id="logoPos"></div></div>
+          <div>
+            <div class="f"><label>Size <b class="num" data-out="logoSize"></b></label><input type="range" id="logoSize" min="4" max="60" value="16"></div>
+            <div class="f"><label>Opacity <b class="num" data-out="logoAlpha"></b></label><input type="range" id="logoAlpha" min="10" max="100" value="100"></div>
+          </div>
+        </div>
+      </div>
+    </details>
+
+    <details>
+      <summary>Watermark <span class="tag" id="wmTag">Off</span></summary>
+      <div class="inner">
+        <div class="f"><div class="seg full" id="wmSeg"><button type="button" data-v="off" class="on">Off</button><button type="button" data-v="corner">Corner</button><button type="button" data-v="center">Center</button><button type="button" data-v="tiled">Tiled</button></div></div>
+        <div id="wmFields" hidden>
+          <div class="f"><label for="wmText">Text</label><input type="text" id="wmText" value="© cgradying"></div>
+          <label class="chk"><input type="checkbox" id="wmLogo"> Use the logo instead of text</label>
+          <div class="two">
+            <div class="f"><label>Size <b class="num" data-out="wmSize"></b></label><input type="range" id="wmSize" min="2" max="30" value="5"></div>
+            <div class="f"><label>Opacity <b class="num" data-out="wmAlpha"></b></label><input type="range" id="wmAlpha" min="5" max="100" value="35"></div>
+          </div>
+          <div class="f"><label>Color</label><input type="color" id="wmColor" value="#ffffff"></div>
+        </div>
+      </div>
+    </details>
+
+    <details>
+      <summary>Template library <span class="tag" id="libTag"></span></summary>
+      <div class="inner">
+        <ul class="lib" id="lib"></ul>
+        <div class="row f"><input type="text" id="libName" placeholder="Template name"><button type="button" class="btn-sm" id="libSave">Save</button></div>
+        <div class="row"><button type="button" class="btn-sm" id="libExport">Export file</button><button type="button" class="btn-sm" id="libImport">Import file</button><input type="file" id="libFile" accept="application/json,.json" hidden></div>
+        <small class="note">Templates live in this browser. Export a file to share one with your team.</small>
+      </div>
+    </details>
+  </div>
+
+  <!-- ===== Shared export ===== -->
   <details open>
     <summary>Export</summary>
-    <button class="btn" id="export" disabled><svg class="ico"><use href="#i-down"/></svg><span id="exportLabel">Add photos to export</span></button>
-    <div class="bar-prog" id="prog" hidden><i></i></div>
-    <p class="status" id="status" role="status"></p>
-    <small class="note">JPEG quality 95, full color detail (4:4:4), the photo's color profile kept. Downloads one zip with instagram/, facebook/ and split/ folders.</small>
+    <div class="inner">
+      <div class="two">
+        <div class="f"><div class="lbl">Format</div><div class="seg full" id="fmtSeg"><button type="button" data-v="jpeg" class="on">JPEG</button><button type="button" data-v="png">PNG</button></div></div>
+        <div class="f" id="qualityRow"><label>Quality <b class="num" data-out="quality"></b></label><input type="range" id="quality" min="70" max="100" value="95"></div>
+      </div>
+      <div class="f"><div class="lbl">Upscale small photos <b id="upNote"></b></div><div class="seg full" id="upSeg"><button type="button" data-v="off" class="on">Off</button><button type="button" data-v="lanczos">Lanczos</button><button type="button" data-v="ai" id="upAi">AI</button></div></div>
+      <label class="chk"><input type="checkbox" id="enhance"> Auto enhance (levels, contrast, sharpen)</label>
+      <div class="two">
+        <div class="f"><label for="event">Event</label><input type="text" id="event" placeholder="e.g. summit"></div>
+        <div class="f"><label for="rename">File names</label><input type="text" id="rename" placeholder="{name}_{preset}"></div>
+      </div>
+      <div class="tokens" id="tokens"><button type="button">{name}</button><button type="button">{event}</button><button type="button">{date}</button><button type="button">{n:03}</button><button type="button">{preset}</button></div>
+      <p class="sample" id="sample"></p>
+      <div class="two">
+        <div class="f"><label for="artist">Artist (metadata)</label><input type="text" id="artist" value="cgradying"></div>
+        <div class="f"><label for="copyright">Copyright</label><input type="text" id="copyright" value="© cgradying"></div>
+      </div>
+      <button class="btn" id="export" disabled><svg class="ico"><use href="#i-down"/></svg><span id="exportLabel">Add photos to export</span></button>
+      <div class="prog" id="prog" hidden><div class="lbl"><span id="progStage">Uploading</span><b class="num" id="progCount"></b></div><div class="bar" id="progBar"><i></i></div></div>
+      <p class="status" id="status" role="status"></p>
+    </div>
   </details>
 
   <details>
     <summary>Past batches <span class="tag" id="histCount"></span></summary>
-    <ul class="history" id="history"><li class="empty">None yet.</li></ul>
+    <div class="inner"><ul class="history" id="history"><li class="empty">None yet.</li></ul></div>
   </details>
+
+  <footer class="credit"><span><b>POST PREP</b> <span class="num" id="version"></span></span><span>made by <a href="https://github.com/cGradying" target="_blank" rel="noopener">cgradying</a></span></footer>
 </aside>
 
 <main>
   <div id="bar">
     <div class="nav"><button type="button" id="prev" aria-label="Previous photo"><svg class="ico"><use href="#i-left"/></svg></button><button type="button" id="next" aria-label="Next photo"><svg class="ico"><use href="#i-right"/></svg></button></div>
     <span class="name" id="photoName">No photos</span><span class="dims num" id="photoDims"></span>
+    <div class="seg" id="viewSeg" hidden><button type="button" data-v="single" class="on">Single</button><button type="button" data-v="grid">Batch grid</button></div>
     <div id="hint">
       <span class="keys"><kbd>←</kbd> <kbd>→</kbd> switch · <kbd>Del</kbd> remove · <kbd>⌘V</kbd> paste</span>
       <button type="button" class="btn-sm" id="clearAll" hidden>Clear all</button>
@@ -241,294 +229,19 @@ FORM: pinned by user ("use pixel-id-maker for design reference").
       <canvas id="fade" aria-hidden="true"></canvas>
       <div class="empty-card">
         <h2>DROP PHOTOS</h2>
-        <p>Drag JPEG, PNG or WebP files anywhere, or paste with <kbd>⌘V</kbd>.</p>
+        <p>Drag files anywhere, or paste with <kbd>⌘V</kbd>.</p>
         <button type="button" class="btn" id="choose"><svg class="ico"><use href="#i-plus"/></svg>Choose photos</button>
+        <span class="formats" id="formats">JPEG · PNG · WebP · TIFF · BMP · GIF</span>
       </div>
     </div>
-    <div class="outputs" id="outputs" hidden></div>
-    <input type="file" id="pick" accept="image/jpeg,image/png,image/webp" multiple hidden>
+    <div class="view" id="outputs" hidden></div>
+    <div id="tplView" hidden></div>
+    <input type="file" id="pick" multiple hidden>
   </div>
   <nav class="strip" id="strip" aria-label="Photos" hidden></nav>
 </main>
 
-<script>
-const PRESETS = [
-  {id:'ig_portrait', group:'Instagram', name:'Feed portrait', w:1080, h:1350, on:true},
-  {id:'ig_square', group:'Instagram', name:'Feed square', w:1080, h:1080},
-  {id:'ig_landscape', group:'Instagram', name:'Feed landscape', w:1080, h:566},
-  {id:'ig_story', group:'Instagram', name:'Story / Reel', w:1080, h:1920},
-  {id:'fb_feed', group:'Facebook', name:'Feed', long:2048, on:true},
-  {id:'fb_story', group:'Facebook', name:'Story', w:1080, h:1920},
-];
-const $ = id => document.getElementById(id);
-const state = {photos:[], current:-1, ratio:[1,1], hl:null};
-const esc = s => String(s).replace(/[&<>"']/g, c => `&#${c.charCodeAt(0)};`);
-const icon = id => `<svg class="ico" aria-hidden="true"><use href="#i-${id}"/></svg>`;
-
-// ---- purple pixel fade (pixel-id-maker's background, drawn live) ----
-function pixelFade(canvas, cell, from) {
-  const r = canvas.getBoundingClientRect(); if (!r.width) return;
-  const cols = Math.ceil(r.width / cell), rows = Math.ceil(r.height / cell);
-  canvas.width = cols; canvas.height = rows; canvas.style.imageRendering = 'pixelated';
-  const ctx = canvas.getContext('2d'), img = ctx.createImageData(cols, rows);
-  let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
-  const ramp = [[20,17,28],[44,30,78],[90,60,170],[124,58,237],[166,107,255],[217,190,255]];
-  for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) {
-    const d = from === 'br' ? Math.hypot((cols - x) / cols, (rows - y) / rows) : Math.hypot((cols - x) / cols, y / rows * .8);
-    let t = Math.max(0, Math.min(1, 1.15 - d * 1.05 + (rnd() - .5) * .35));
-    const k = t * (ramp.length - 1), i = Math.floor(k), f = k - i, a = ramp[i], b = ramp[Math.min(i + 1, ramp.length - 1)];
-    const o = (y * cols + x) * 4;
-    for (let c = 0; c < 3; c++) img.data[o + c] = a[c] + (b[c] - a[c]) * f;
-    img.data[o + 3] = 255;
-  }
-  ctx.putImageData(img, 0, 0);
-}
-const paintFades = () => { pixelFade($('brandFade'), 10, 'tr'); if (!$('empty').hidden) pixelFade($('fade'), 22, 'br'); };
-
-// ---- settings (auto-saved) ----
-const presetBox = $('presets');
-for (const g of ['Instagram','Facebook']) {
-  presetBox.insertAdjacentHTML('beforeend', `<div class="grp">${g.toUpperCase()}</div>`);
-  for (const p of PRESETS.filter(p => p.group === g)) {
-    const size = p.long ? `${p.long} long side` : `${p.w}×${p.h}`;
-    presetBox.insertAdjacentHTML('beforeend', `<label class="opt" data-id="${p.id}"><input type="checkbox" value="${p.id}" ${p.on ? 'checked' : ''}><span>${p.name}</span><small class="num">${size}</small></label>`);
-  }
-}
-const chosen = () => [...presetBox.querySelectorAll('input:checked')].map(i => i.value);
-const splitOn = () => $('splitSeg').querySelector('.on').dataset.v === 'on';
-const ratioKey = () => $('ratios').querySelector('.on').dataset.r;
-
-function saveSettings() {
-  try {
-    localStorage.setItem('postprep', JSON.stringify({presets: chosen(), split: splitOn(), cols: $('cols').value, ratio: ratioKey(), rw: $('rw').value, rh: $('rh').value, pad: $('pad').value, wideOnly: $('wideOnly').checked}));
-    $('saved').classList.add('flash'); clearTimeout(saveSettings.t); saveSettings.t = setTimeout(() => $('saved').classList.remove('flash'), 600);
-  } catch {}
-}
-function loadSettings() {
-  let s; try { s = JSON.parse(localStorage.getItem('postprep')); } catch {}
-  if (!s) return;
-  presetBox.querySelectorAll('input').forEach(i => i.checked = s.presets.includes(i.value));
-  setSeg($('splitSeg'), s.split ? 'on' : 'off', 'v');
-  $('cols').value = s.cols; $('rw').value = s.rw; $('rh').value = s.rh;
-  setSeg($('ratios'), s.ratio, 'r');
-  $('pad').value = s.pad; $('wideOnly').checked = s.wideOnly;
-}
-function setSeg(seg, value, key) { seg.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset[key] === value)); }
-
-presetBox.addEventListener('change', changed);
-presetBox.addEventListener('mouseover', e => highlight(e.target.closest('.opt')?.dataset.id));
-presetBox.addEventListener('focusin', e => highlight(e.target.closest('.opt')?.dataset.id));
-presetBox.addEventListener('mouseleave', () => highlight(null));
-document.querySelectorAll('[data-pick]').forEach(b => b.addEventListener('click', () => {
-  presetBox.querySelectorAll('input').forEach(i => i.checked = b.dataset.pick === 'all' || (b.dataset.pick === 'ig' && i.value.startsWith('ig_')));
-  changed();
-}));
-$('splitSeg').addEventListener('click', e => { const b = e.target.closest('button'); if (b) { setSeg($('splitSeg'), b.dataset.v, 'v'); changed(); } });
-document.querySelectorAll('[data-step]').forEach(b => b.addEventListener('click', () => { $('cols').value = clampCols(+$('cols').value + +b.dataset.step); changed(); }));
-$('cols').addEventListener('input', changed);
-$('autoCols').addEventListener('click', () => {
-  const p = state.photos[state.current]; if (!p?.w) return;
-  $('cols').value = clampCols(Math.round(p.w * state.ratio[1] / (p.h * state.ratio[0])));
-  changed();
-});
-$('ratios').addEventListener('click', e => { const b = e.target.closest('button'); if (b) { setSeg($('ratios'), b.dataset.r, 'r'); changed(); } });
-['rw','rh','pad','wideOnly'].forEach(id => $(id).addEventListener('input', changed));
-document.querySelectorAll('.swatch').forEach(s => s.addEventListener('click', () => { $('pad').value = s.dataset.c; changed(); }));
-const clampCols = n => Math.min(20, Math.max(1, n || 1));
-
-function changed() {
-  const r = ratioKey();
-  state.ratio = r === 'custom' ? [Math.max(1, +$('rw').value || 1), Math.max(1, +$('rh').value || 1)] : r.split(':').map(Number);
-  $('customRatio').hidden = r !== 'custom';
-  $('splitFields').hidden = !splitOn();
-  $('padHex').textContent = $('pad').value;
-  document.querySelectorAll('.swatch').forEach(s => s.classList.toggle('on', s.dataset.c === $('pad').value));
-  $('splitTag').textContent = splitOn() ? `${$('cols').value} × ${state.ratio.join(':')}` : 'Off';
-  $('outCount').textContent = `${chosen().length} selected`;
-  saveSettings(); render();
-}
-
-// ---- photos ----
-$('choose').addEventListener('click', () => $('pick').click());
-$('pick').addEventListener('change', e => { add(e.target.files); e.target.value = ''; });
-let dragDepth = 0;
-addEventListener('dragenter', e => { e.preventDefault(); if (++dragDepth === 1) $('stage').classList.add('over'); });
-addEventListener('dragleave', () => { if (--dragDepth <= 0) { dragDepth = 0; $('stage').classList.remove('over'); } });
-addEventListener('dragover', e => e.preventDefault());
-addEventListener('drop', e => { e.preventDefault(); dragDepth = 0; $('stage').classList.remove('over'); add(e.dataTransfer.files); });
-addEventListener('paste', e => { const files = [...e.clipboardData.items].filter(i => i.kind === 'file').map(i => i.getAsFile()); if (files.length) add(files); });
-
-function add(list) {
-  const all = [...list], files = all.filter(f => /^image\/(jpeg|png|webp)$/.test(f.type));
-  const skipped = all.length - files.length;
-  if (!files.length) return status(skipped ? `Skipped ${skipped} file${skipped > 1 ? 's' : ''}: only JPEG, PNG and WebP work.` : '', 'err');
-  for (const file of files) {
-    const p = {file, url: URL.createObjectURL(file), img: new Image()};
-    p.img.onload = () => { p.w = p.img.naturalWidth; p.h = p.img.naturalHeight; render(); };
-    p.img.onerror = () => { remove(state.photos.indexOf(p)); status(`Couldn't read ${file.name}.`, 'err'); };
-    p.img.src = p.url;
-    state.photos.push(p);
-  }
-  if (state.current < 0) state.current = 0;
-  status(skipped ? `Added ${files.length}. Skipped ${skipped} that weren't JPEG, PNG or WebP.` : '');
-  render();
-}
-function remove(i) {
-  if (i < 0) return;
-  URL.revokeObjectURL(state.photos[i].url);
-  state.photos.splice(i, 1);
-  state.current = Math.min(state.current, state.photos.length - 1);
-  render();
-}
-const go = d => { if (state.photos.length) { state.current = (state.current + d + state.photos.length) % state.photos.length; render(); } };
-$('prev').addEventListener('click', () => go(-1));
-$('next').addEventListener('click', () => go(1));
-$('clearAll').addEventListener('click', () => { while (state.photos.length) remove(0); });
-addEventListener('keydown', e => {
-  if (e.target.closest('input,textarea')) return;
-  if (e.key === 'ArrowLeft') go(-1);
-  else if (e.key === 'ArrowRight') go(1);
-  else if ((e.key === 'Delete' || e.key === 'Backspace') && state.current >= 0) { e.preventDefault(); remove(state.current); }
-});
-$('strip').addEventListener('click', e => {
-  const rm = e.target.closest('[data-rm]');
-  if (rm) return remove(+rm.dataset.rm);
-  if (e.target.closest('.add')) return $('pick').click();
-  const b = e.target.closest('[data-i]'); if (b) { state.current = +b.dataset.i; render(); }
-});
-
-// ---- geometry: mirrors src/split.rs and presets::fit ----
-function splitLayout(w, h, cols, [rw, rh]) {
-  const [cw, ch] = w * rh >= h * cols * rw ? [w, Math.ceil(w * rh / (cols * rw))] : [Math.ceil(h * cols * rw / rh), h];
-  return {cw, ch, ox: Math.floor((cw - w) / 2), oy: Math.floor((ch - h) / 2), cut: i => Math.floor(i * cw / cols)};
-}
-function fitRect(w, h, p) {
-  const [tw, th] = p.long ? (w >= h ? [p.long, Math.floor(p.long * h / w)] : [Math.floor(p.long * w / h), p.long]) : [p.w, p.h];
-  const [cw, ch] = w * th > h * tw ? [Math.floor(h * tw / th), h] : [w, Math.floor(w * th / tw)];
-  return {x: Math.floor((w - cw) / 2), y: Math.floor((h - ch) / 2), cw, ch, out: cw > tw ? [tw, th] : [cw, ch]};
-}
-// Preview canvases are for judging composition, so they're drawn at most ~900px long.
-function canvasFor(cw, ch, max = 900) { const c = document.createElement('canvas'), s = Math.min(1, max / Math.max(cw, ch)); c.width = Math.max(1, Math.round(cw * s)); c.height = Math.max(1, Math.round(ch * s)); return [c, c.getContext('2d'), s]; }
-
-// ---- render ----
-function render() {
-  const n = state.photos.length, p = state.photos[state.current];
-  $('empty').hidden = !!n; $('outputs').hidden = !n; $('strip').hidden = !n; $('clearAll').hidden = !n;
-  $('prev').disabled = $('next').disabled = n < 2;
-  $('photoName').textContent = p ? p.file.name : 'No photos';
-  $('photoDims').textContent = p?.w ? `${p.w}×${p.h} · ${state.current + 1} of ${n}` : '';
-  renderStrip(); updateExport();
-  if (!n) return paintFades();
-  const out = $('outputs'); out.innerHTML = '';
-  if (!p.w) { out.innerHTML = '<p class="skip">Loading…</p>'; return; }
-
-  if (splitOn()) {
-    const wide = p.w * 10 >= p.h * 15;
-    const block = document.createElement('section'); block.className = 'block split-view';
-    if ($('wideOnly').checked && !wide) {
-      block.innerHTML = `<h3>Carousel split</h3><p class="skip">This photo isn't 1.5:1 or wider, so it won't be split. Untick "Only split wide photos" to split it anyway.</p>`;
-    } else {
-      const cols = clampCols(+$('cols').value), L = splitLayout(p.w, p.h, cols, state.ratio);
-      const panelW = Math.floor(L.cw / cols), outW = Math.min(1080, panelW), outH = Math.round(outW * state.ratio[1] / state.ratio[0]);
-      const padded = L.cw > p.w || L.ch > p.h;
-      block.innerHTML = `<h3>Carousel split <span class="num">${cols} panels · each ${outW}×${outH}${padded ? ' · padded' : ' · exact fit'}</span></h3>`;
-      const [c, ctx, s] = canvasFor(L.cw, L.ch, 1400);
-      ctx.fillStyle = $('pad').value; ctx.fillRect(0, 0, c.width, c.height);
-      ctx.drawImage(p.img, L.ox * s, L.oy * s, p.w * s, p.h * s);
-      ctx.strokeStyle = '#a66bff'; ctx.lineWidth = Math.max(2, c.width / 400); ctx.setLineDash([ctx.lineWidth * 3, ctx.lineWidth * 2]);
-      for (let i = 1; i < cols; i++) { const x = L.cut(i) * s; ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, c.height); ctx.stroke(); }
-      block.append(c);
-      const row = document.createElement('div'); row.className = 'carousel';
-      for (let i = 0; i < cols; i++) {
-        const x0 = L.cut(i), x1 = L.cut(i + 1), [pc, pctx] = canvasFor(x1 - x0, L.ch, 400);
-        pctx.drawImage(c, x0 * s, 0, (x1 - x0) * s, c.height, 0, 0, pc.width, pc.height);
-        const fig = document.createElement('figure'); fig.append(pc);
-        fig.insertAdjacentHTML('beforeend', `<figcaption>${i + 1}/${cols}</figcaption>`); row.append(fig);
-      }
-      block.append(row);
-      if (panelW < 1080) block.insertAdjacentHTML('beforeend', `<p class="skip" style="color:var(--warn);margin-top:8px">Panels are ${panelW} px wide, under 1080, so they export at that size instead of being upscaled.</p>`);
-    }
-    out.append(block);
-  }
-
-  const picks = PRESETS.filter(x => chosen().includes(x.id));
-  if (picks.length) {
-    const block = document.createElement('section'); block.className = 'block';
-    block.innerHTML = `<h3>Files for this photo <span>cropped from the center, as they'll upload</span></h3>`;
-    const tiles = document.createElement('div'); tiles.className = 'tiles';
-    for (const pr of picks) {
-      const r = fitRect(p.w, p.h, pr), [c, ctx] = canvasFor(r.cw, r.ch, 600);
-      ctx.drawImage(p.img, r.x, r.y, r.cw, r.ch, 0, 0, c.width, c.height);
-      const fig = document.createElement('figure'); fig.className = 'tile'; fig.dataset.id = pr.id; fig.append(c);
-      fig.insertAdjacentHTML('beforeend', `<figcaption><b>${pr.group} ${pr.name.toLowerCase()}</b><span class="num">${r.out.join('×')}</span></figcaption>`
-        + (pr.w && r.cw < pr.w ? `<span class="warn">Smaller than ${pr.w} px wide, exported at native size.</span>` : ''));
-      tiles.append(fig);
-    }
-    block.append(tiles); out.append(block);
-  } else if (!splitOn()) {
-    out.innerHTML = '<p class="skip">Pick at least one output on the left.</p>';
-  }
-  highlight(state.hl);
-}
-function highlight(id) {
-  state.hl = id;
-  presetBox.querySelectorAll('.opt').forEach(o => o.classList.toggle('hl', o.dataset.id === id));
-  document.querySelectorAll('.tile').forEach(t => t.classList.toggle('hl', t.dataset.id === id));
-  if (id) document.querySelector(`.tile[data-id="${id}"]`)?.scrollIntoView({block: 'nearest', behavior: 'smooth'});
-}
-function renderStrip() {
-  $('strip').innerHTML = state.photos.map((p, i) => `<button type="button" data-i="${i}" aria-current="${i === state.current}" aria-label="${esc(p.file.name)}"><img src="${p.url}" alt=""><span class="x" data-rm="${i}" aria-label="Remove ${esc(p.file.name)}">${icon('x')}</span></button>`).join('')
-    + `<button type="button" class="add" aria-label="Add more photos">${icon('plus')}</button>`;
-  $('strip').querySelector('[aria-current=true]')?.scrollIntoView({block: 'nearest', inline: 'nearest'});
-}
-function updateExport() {
-  const n = state.photos.length, outs = chosen().length + (splitOn() ? 1 : 0);
-  $('export').disabled = !n || !outs || state.busy;
-  $('exportLabel').textContent = state.busy ? 'Exporting…' : !n ? 'Add photos to export' : !outs ? 'Pick an output first' : `Export ${n} photo${n > 1 ? 's' : ''}`;
-}
-
-// ---- export ----
-$('export').addEventListener('click', async () => {
-  state.busy = true; updateExport(); $('prog').hidden = false;
-  const n = state.photos.length;
-  status(`Preparing ${n} photo${n > 1 ? 's' : ''}. Large batches take a moment.`);
-  const fd = new FormData();
-  fd.append('options', JSON.stringify({
-    presets: chosen(),
-    split: splitOn() ? {cols: clampCols(+$('cols').value), rw: state.ratio[0], rh: state.ratio[1], pad: $('pad').value, wide_only: $('wideOnly').checked} : null,
-  }));
-  state.photos.forEach(p => fd.append('files', p.file, p.file.name));
-  try {
-    const res = await fetch('/api/export', {method: 'POST', body: fd});
-    if (res.status === 401) { location.href = '/login'; return; }
-    if (res.status === 413) throw new Error('the batch is over 200 MB, so export fewer photos at a time');
-    if (!res.ok) throw new Error((await res.text()) || res.statusText);
-    const blob = await res.blob(), a = document.createElement('a');
-    a.href = URL.createObjectURL(blob); a.download = `post-prep-${res.headers.get('x-batch-id') || Date.now()}.zip`; a.click();
-    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-    status(`Done. ${n} photo${n > 1 ? 's' : ''} exported to your Downloads.`, 'ok');
-    loadHistory();
-  } catch (err) {
-    status(`Export failed: ${err.message}. Your photos are still here, so try again.`, 'err');
-  } finally { state.busy = false; $('prog').hidden = true; updateExport(); }
-});
-function status(text, kind) { $('status').textContent = text; $('status').className = 'status' + (kind ? ' ' + kind : ''); }
-
-async function loadHistory() {
-  try {
-    const res = await fetch('/api/batches'); if (!res.ok) return;
-    const ids = await res.json();
-    $('histCount').textContent = ids.length || '';
-    $('history').innerHTML = ids.length ? ids.slice(0, 50).map(id => {
-      const d = new Date(+id);
-      return `<li><a href="/api/batches/${id}" download>${d.toLocaleDateString(undefined, {month: 'short', day: 'numeric'})}<span class="num">${d.toLocaleTimeString(undefined, {hour: 'numeric', minute: '2-digit'})}</span></a></li>`;
-    }).join('') : '<li class="empty">None yet.</li>';
-  } catch {}
-}
-
-addEventListener('resize', paintFades);
-loadSettings(); changed(); loadHistory();
-document.fonts.ready.then(paintFades);
-</script>
+<script src="/app.js"></script>
+<script src="/template.js"></script>
 </body>
 </html>
