@@ -7,9 +7,23 @@ cd "$(dirname "$0")"
 APP="$HOME/Applications/Post Prep.app"
 cargo build --release
 
+pkill -f "Post Prep.app/Contents/.*photo-post-prep" || true # stop the old server so the new build is what opens
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp target/release/photo-post-prep "$APP/Contents/Resources/"
+
+# AI upscaling: Real-ESRGAN's official macOS build (universal, runs on the GPU).
+ESRGAN_URL=https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.5.0/realesrgan-ncnn-vulkan-20220424-macos.zip
+ESRGAN_SHA=e0ad05580abfeb25f8d8fb55aaf7bedf552c375b5b4d9bd3c8d59764d2cc333a
+if [ ! -x vendor/realesrgan/realesrgan-ncnn-vulkan ]; then
+  mkdir -p vendor && curl -sSL -o vendor/realesrgan.zip "$ESRGAN_URL"
+  echo "$ESRGAN_SHA  vendor/realesrgan.zip" | shasum -a 256 -c -
+  rm -rf vendor/realesrgan && unzip -q vendor/realesrgan.zip -d vendor/realesrgan && rm vendor/realesrgan.zip
+  chmod +x vendor/realesrgan/realesrgan-ncnn-vulkan
+fi
+mkdir -p "$APP/Contents/Resources/realesrgan/models"
+cp vendor/realesrgan/realesrgan-ncnn-vulkan "$APP/Contents/Resources/realesrgan/"
+cp vendor/realesrgan/models/realesrgan-x4plus.* "$APP/Contents/Resources/realesrgan/models/"
 
 cat > "$APP/Contents/MacOS/post-prep" <<'EOF'
 #!/bin/bash
@@ -20,7 +34,7 @@ DATA="$HOME/Library/Application Support/Post Prep"
 mkdir -p "$DATA"
 if ! curl -s -o /dev/null "$URL/login"; then
   HOST=127.0.0.1 PORT=$PORT DATA_DIR="$DATA/batches" \
-    nohup "$(dirname "$0")/../Resources/photo-post-prep" >>"$DATA/server.log" 2>&1 &
+    nohup "$(cd "$(dirname "$0")/../Resources" && pwd)/photo-post-prep" >>"$DATA/server.log" 2>&1 &
   for _ in $(seq 50); do curl -s -o /dev/null "$URL/login" && break; sleep 0.1; done
 fi
 open "$URL"
@@ -76,4 +90,4 @@ codesign --force --deep -s - "$APP" 2>/dev/null || true
 touch "$APP"
 
 echo "Installed: $APP"
-echo "To stop the background server: pkill -f 'Post Prep.app/Contents/Resources/photo-post-prep'"
+echo "To stop the background server: pkill -f 'Post Prep.app/Contents/.*photo-post-prep'"
