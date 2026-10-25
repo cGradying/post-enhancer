@@ -9,7 +9,7 @@ web
 Rust Axum server serving one static HTML/CSS/JS page (no JS build). Runs as a Finder-launchable Mac app locally, and on AWS App Runner with S3 for the team. Chosen by the user during planning.
 
 ## Brand Commitments
-Visual reference is the user's pixel-id-maker repo (AWS Student Builder Group pixel ID tools): ink-violet chrome, lavender accent, Silkscreen + Space Grotesk, purple pixel-fade. Not the IntPortal registrar theme.
+Visual reference is the user's pixel-id-maker repo (AWS Student Builder Group pixel ID tools): ink-violet chrome, lavender accent, Silkscreen + Space Grotesk, purple pixel-fade.
 
 ## Users
 A photographer/creative on a company creatives team who shoots events (RAW in Capture One), exports finished JPEG/PNG, and posts them to the team's social accounts. Teammates may share the same tool through one shared password.
