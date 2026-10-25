@@ -24,6 +24,7 @@ A single Rust binary (Axum) serves one static page and does all image work serve
 - [Deploy to AWS](#deploy-to-aws)
 - [Development](#development)
 - [Limits and notes](#limits-and-notes)
+- [License](#license)
 - [Credits](#credits)
 
 ## Quick start
@@ -41,7 +42,7 @@ cd post-enhancer
 ./make-app.sh
 ```
 
-This builds the release binary, downloads Real-ESRGAN's official macOS release once (pinned to a SHA-256, kept in `vendor/`), and installs `~/Applications/Post Prep.app`. Open it from Finder, Launchpad or Spotlight. It starts a local server on `127.0.0.1:4870` with no password and opens your browser. Batches are kept in `~/Library/Application Support/Post Prep/batches/`, and the server log is `server.log` in `Post Prep/`.
+This builds the release binary, downloads Real-ESRGAN's official macOS release once (pinned to a SHA-256, kept in `vendor/`), and installs `/Applications/Post Prep.app` (or `~/Applications` if `/Applications` isn't writable; set `APP_DIR` to choose). Open it from Finder, Launchpad or Spotlight. It starts a local server on `127.0.0.1:4870` with no password and opens your browser. Batches are kept in `~/Library/Application Support/Post Prep/batches/`, and the server log is `server.log` in `Post Prep/`.
 
 The server keeps running after you close the tab. Stop it with:
 
@@ -244,6 +245,10 @@ The tests cover the splitter's lossless stitch, preset sizes, upscale-or-keep be
 - Auth is a single shared password with no rate limiting. Don't expose it to the open internet unprotected.
 - Template previews draw a blurred-photo background approximately; the export renders the real blur.
 - Saved templates and settings live in browser storage and are not synced.
+
+## License
+
+[MIT](LICENSE) © 2026 cgradying. Third-party fonts, the Real-ESRGAN engine and Rust crates keep their own licenses, listed under Credits.
 
 ## Credits
 

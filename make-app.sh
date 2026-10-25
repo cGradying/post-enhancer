@@ -1,14 +1,19 @@
 #!/usr/bin/env bash
-# Build "Post Prep.app" into ~/Applications so it opens from Finder, Launchpad or Spotlight.
+# Build "Post Prep.app" into /Applications (or ~/Applications if that is not writable, or $APP_DIR)
+# so it opens from Finder, Launchpad or Spotlight.
 # Opening the app starts the local server (if it isn't running) and opens it in your browser.
 set -euo pipefail
 cd "$(dirname "$0")"
 
-APP="$HOME/Applications/Post Prep.app"
+APP_DIR="${APP_DIR:-/Applications}"
+[ -w "$APP_DIR" ] || APP_DIR="$HOME/Applications"
+mkdir -p "$APP_DIR"
+APP="$APP_DIR/Post Prep.app"
 cargo build --release
 
 pkill -f "Post Prep.app/Contents/.*photo-post-prep" || true # stop the old server so the new build is what opens
 rm -rf "$APP"
+if [ "$APP" != "$HOME/Applications/Post Prep.app" ]; then rm -rf "$HOME/Applications/Post Prep.app"; fi # no duplicate copy
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp target/release/photo-post-prep "$APP/Contents/Resources/"
 
