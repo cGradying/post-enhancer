@@ -9,6 +9,7 @@ A single Rust binary (Axum) serves one static page and does all image work serve
 - **Platform exports.** Instagram and Facebook sizes, center-cropped to the exact pixel target, Lanczos3 downscaled, JPEG 4:4:4 with the source ICC profile kept.
 - **Carousel split.** Cut a wide photo into N panels of a chosen ratio. The photo is padded to fit, never cropped, and the panels re-stitch byte for byte to the padded canvas.
 - **Template frames.** Any canvas (3:4 default), with padding, border, rounded corners, shadow, four background modes, title, credit, logo and a corner, center or tiled watermark. Saved templates export as JSON.
+- **PNG frame.** Bring your own transparent PNG (a border, a watermark, a full frame). Every photo goes behind it with no automatic layout, and the export is the PNG's size.
 - **Upscaling.** Lanczos plus unsharp mask everywhere; Real-ESRGAN ×4 on the GPU in the Mac app.
 - **Formats.** JPEG, PNG, WebP, TIFF, BMP and GIF in. On macOS also HEIC, AVIF and camera RAW through `sips`.
 - **Batch tools.** Auto enhance, rename tokens, `Artist`/`Copyright`/`Software` metadata on every file, live per-photo progress, re-downloadable history.
@@ -69,6 +70,19 @@ Drag photos anywhere onto the window, paste with ⌘V, or use **Choose photos**.
 3. Pick **JPEG** or **PNG** and an **Upscale** mode, then **Export**.
 
 ### Template tab
+
+At the top of the panel, **Layout** builds a frame for you (padding, text, watermark). **PNG frame** skips all of that and uses your own artwork. Switching between them keeps both sets of settings.
+
+#### PNG frame
+
+1. Choose **PNG frame**, then **Choose PNG**. Use a PNG with a transparent area where the photo should show. Soft edges, shadows and partly transparent pixels are kept exactly, because the file goes to the server unchanged.
+2. The canvas becomes the PNG's pixel size, so a 1080×1350 frame exports 1080×1350 photos. Nothing is padded, rotated or laid out.
+3. **Fill** crops each photo to cover the whole frame. **Fit** shows the whole photo and fills the rest with a color or a blurred copy of the photo.
+4. **Save** it like any template. The PNG is saved inside the template, and **•••** exports it as a `.postprep.json` file you can load on another machine. A very large PNG may be too big for browser storage, in which case it still exports but is not remembered after a reload.
+
+Photos smaller than the frame are scaled up with the Upscale mode you pick. With Upscale off, a **Fit** photo stays at its native size and is flagged in the preview, while a **Fill** photo is always scaled to cover the frame.
+
+#### Layout
 
 1. **Layout.** Choose a canvas (3:4, 4:5, 1:1, 4:3, 16:9 or custom; **Rotate** swaps orientation). **Fit photo** shows the whole photo inside the frame; **Fill frame** crops to fill it. **Padding** insets the photo on all sides; **Text space** adds room only where a title or credit line exists.
 2. **Style.** Background is a solid color, a blurred copy of the photo, the purple pixel fade, or your own image. Add a border, rounded corners and a shadow.

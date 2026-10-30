@@ -92,7 +92,22 @@ FORM: pinned by user ("use pixel-id-maker for design reference"); distilled on r
         <input type="file" id="libFile" accept="application/json,.json" hidden>
       </div>
 
-      <details name="tpl" open>
+      <div class="f"><div class="seg full" id="tplMode" aria-label="Template type">
+        <button type="button" data-v="layout" class="on" title="Frame each photo on a canvas, with padding, text and a watermark">Layout</button>
+        <button type="button" data-v="frame" title="Put each photo behind your own PNG frame">PNG frame</button>
+      </div></div>
+
+      <details name="tpl" id="frameSec" hidden>
+        <summary>PNG frame <span class="tag num" id="frameTag"></span></summary>
+        <div class="inner">
+          <small class="note">Your PNG goes on top and each photo goes behind it, so leave the part you want to show through transparent. Photos are not moved or padded. The export is the PNG's size.</small>
+          <div class="f file-pick" style="margin-top:8px"><img id="frameThumb" alt="Frame template" hidden><button type="button" class="btn-sm" id="framePick">Choose PNG</button><button type="button" class="link" id="frameClear" hidden>Remove</button><input type="file" id="frameFile" accept="image/png,image/webp,image/*" hidden></div>
+          <div class="f"><div class="lbl">Photo behind it</div><div class="seg" id="frFit"><button type="button" data-v="cover" class="on" title="Fill the whole frame, cropping the edges">Fill</button><button type="button" data-v="contain" title="Show the whole photo, with a background behind it">Fit</button></div></div>
+          <div class="f row" id="frBgRow" hidden><div class="seg" id="frBg"><button type="button" data-v="solid" class="on">Color</button><button type="button" data-v="blur">Blurred photo</button></div><input type="color" id="frColor" value="#ffffff" aria-label="Background color behind a fitted photo" style="width:44px"></div>
+        </div>
+      </details>
+
+      <details name="tpl" open id="layoutSec">
         <summary>Layout <span class="tag num" id="canvasTag"></span></summary>
         <div class="inner">
           <div class="f"><div class="seg" id="canvasSeg">

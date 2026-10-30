@@ -2,7 +2,8 @@
 // watermark. The browser draws the background and overlay layers with the
 // same code it previews with; the server only places the photo (src/template.rs).
 (() => {
-const imgs = {logo: null, bg: null}; // {url, img}
+const imgs = {logo: null, bg: null, frame: null}; // {url, img}
+const frameMode = () => segVal('tplMode') === 'frame';
 const IMG_KEY = 'postprep.tplimg', LIB_KEY = 'postprep.templates';
 
 // ---------- controls ----------
@@ -33,6 +34,15 @@ function pickImage(input, kind, maxSide, type) {
     setImg(kind, c.toDataURL(type, 0.9)); changed();
   });
 }
+$('framePick').addEventListener('click', () => $('frameFile').click());
+$('frameClear').addEventListener('click', () => { setImg('frame', null); changed(); });
+// The frame keeps its original bytes, so soft edges and colors reach the export untouched.
+$('frameFile').addEventListener('change', async () => {
+  const f = $('frameFile').files[0]; $('frameFile').value = ''; if (!f) return;
+  if (f.size > 40e6) return status('That frame is over 40 MB. Export it smaller and try again.', 'err');
+  const url = await new Promise((ok, fail) => { const r = new FileReader(); r.onload = () => ok(r.result); r.onerror = fail; r.readAsDataURL(f); });
+  try { await setImg('frame', url); } catch { status(`Couldn't read ${f.name} as an image.`, 'err'); }
+});
 pickImage($('logoFile'), 'logo', 1200, 'image/png');
 pickImage($('bgFile'), 'bg', 2400, 'image/jpeg');
 $('logoPick').addEventListener('click', () => $('logoFile').click());
@@ -41,14 +51,21 @@ $('logoClear').addEventListener('click', () => { setImg('logo', null); changed()
 const loadImg = src => new Promise((ok, fail) => { const i = new Image(); i.onload = () => ok(i); i.onerror = fail; i.src = src; });
 async function setImg(kind, url, persist = true) {
   imgs[kind] = url ? {url, img: await loadImg(url)} : null;
-  const thumb = $(kind === 'logo' ? 'logoThumb' : 'bgThumb');
+  const thumb = $({logo: 'logoThumb', bg: 'bgThumb', frame: 'frameThumb'}[kind]);
   thumb.hidden = !url; if (url) thumb.src = url;
-  if (persist) store.set(IMG_KEY, {logo: imgs.logo?.url || null, bg: imgs.bg?.url || null}) || status('Image too large to remember after reload, but it will still export.', 'err');
+  if (persist) store.set(IMG_KEY, {logo: imgs.logo?.url || null, bg: imgs.bg?.url || null, frame: imgs.frame?.url || null}) || status('Image too large to remember after reload, but it will still export.', 'err');
   changed();
 }
 
 // ---------- layout ----------
 function layout() {
+  if (frameMode()) {
+    const f = imgs.frame?.img, W = f ? Math.min(8000, Math.max(16, f.naturalWidth)) : 1080, H = f ? Math.min(8000, Math.max(16, f.naturalHeight)) : 1350;
+    return {
+      w: W, h: H, slot: {x: 0, y: 0, w: W, h: H}, cover: segVal('frFit') === 'cover', border: 0, border_color: '#ffffff',
+      radius: 0, shadow: false, blur_bg: segVal('frBg') === 'blur', bg_color: $('frColor').value,
+    };
+  }
   const W = Math.min(8000, Math.max(200, +$('cw').value || 1080)), H = Math.min(8000, Math.max(200, +$('ch').value || 1440));
   // Padding goes round all four sides; text space is added only where there is text.
   const pad = Math.round(Math.min(W, H) * $('padAmt').value / 100), gap = Math.round(H * $('textSpace').value / 100);
@@ -75,8 +92,8 @@ function placement(p, L) {
 
 // ---------- drawing (full-resolution coordinates; callers scale the context) ----------
 function drawUnder(ctx, L, p) {
-  const {w: W, h: H} = L, bg = segVal('bgSeg');
-  ctx.fillStyle = $('bgColor').value; ctx.fillRect(0, 0, W, H);
+  const {w: W, h: H} = L, fm = frameMode(), bg = fm ? (L.blur_bg ? 'blur' : 'solid') : segVal('bgSeg');
+  ctx.fillStyle = fm ? $('frColor').value : $('bgColor').value; ctx.fillRect(0, 0, W, H);
   if (bg === 'fade') {
     const c = document.createElement('canvas'); drawFade(c, Math.ceil(W / 36), Math.ceil(H / 36), 'light', 11);
     ctx.imageSmoothingEnabled = false; ctx.drawImage(c, 0, 0, Math.ceil(W / 36) * 36, Math.ceil(H / 36) * 36); ctx.imageSmoothingEnabled = true;
@@ -108,6 +125,7 @@ function drawPlaced(ctx, L, p) {
   return r;
 }
 function drawOver(ctx, L) {
+  if (frameMode()) { if (imgs.frame) ctx.drawImage(imgs.frame.img, 0, 0, L.w, L.h); return; }
   const {w: W, h: H, slot: s} = L, align = segVal('alignSeg'), font = $('font').value;
   const x = align === 'left' ? s.x : align === 'right' ? s.x + s.w : W / 2;
   ctx.fillStyle = $('textColor').value; ctx.textAlign = align; ctx.textBaseline = 'middle';
@@ -194,6 +212,10 @@ async function renderGrid(view, L) {
 async function payload() {
   const L = layout(), toBlob = c => new Promise(r => c.toBlob(r, 'image/png'));
   const layer = draw => { const c = document.createElement('canvas'); c.width = L.w; c.height = L.h; draw(c.getContext('2d')); return toBlob(c); };
+  if (frameMode()) {
+    if (!imgs.frame) throw new Error('choose a PNG frame first');
+    return {layout: L, under: null, over: await (await fetch(imgs.frame.url)).blob()};
+  }
   const bg = segVal('bgSeg');
   return {
     layout: L,
@@ -205,7 +227,7 @@ async function payload() {
 // ---------- library ----------
 const TPL_SCOPE = () => document.querySelectorAll('#tool-template input[id], #tool-template select[id]');
 function snapshot(name) {
-  const t = {name, version: 1, inputs: {}, segs: {}, logo: imgs.logo?.url || null, bg: imgs.bg?.url || null};
+  const t = {name, version: 1, inputs: {}, segs: {}, logo: imgs.logo?.url || null, bg: imgs.bg?.url || null, frame: imgs.frame?.url || null};
   TPL_SCOPE().forEach(i => { if (i.type !== 'file' && i.id !== 'tplPick') t.inputs[i.id] = i.type === 'checkbox' ? i.checked : i.value; });
   document.querySelectorAll('#tool-template .seg[id]').forEach(s => t.segs[s.id] = segVal(s.id));
   return t;
@@ -213,7 +235,7 @@ function snapshot(name) {
 async function apply(t) {
   for (const [id, v] of Object.entries(t.inputs || {})) { const i = $(id); if (!i) continue; if (i.type === 'checkbox') i.checked = v; else i.value = v; }
   for (const [id, v] of Object.entries(t.segs || {})) if ($(id)) setSeg(id, v);
-  await setImg('logo', t.logo); await setImg('bg', t.bg);
+  await setImg('logo', t.logo); await setImg('bg', t.bg); await setImg('frame', t.frame || null);
   App.tplName = t.name; changed();
 }
 const lib = () => store.get(LIB_KEY) || {};
@@ -256,7 +278,14 @@ $('libFile').addEventListener('change', async () => {
 
 // ---------- labels ----------
 function sync() {
-  const L = layout(), bg = segVal('bgSeg'), wm = segVal('wmSeg');
+  const L = layout(), bg = segVal('bgSeg'), wm = segVal('wmSeg'), fm = frameMode();
+  document.querySelectorAll('#tool-template details[name=tpl]').forEach(d => { d.hidden = d.id === 'frameSec' ? !fm : fm; });
+  if (fm && ![...document.querySelectorAll('#tool-template details[name=tpl]')].some(d => d.open && !d.hidden)) $('frameSec').open = true;
+  if (!fm && ![...document.querySelectorAll('#tool-template details[name=tpl]')].some(d => d.open && !d.hidden)) $('layoutSec').open = true;
+  $('frameTag').textContent = imgs.frame ? `${L.w}×${L.h}` : '';
+  $('frameClear').hidden = !imgs.frame;
+  $('frBgRow').hidden = segVal('frFit') !== 'contain';
+  $('frColor').hidden = segVal('frBg') === 'blur';
   $('canvasTag').textContent = `${L.w}×${L.h}`;
   $('customSize').hidden = segVal('canvasSeg') !== 'custom';
   $('logoFields').hidden = $('logoClear').hidden = !imgs.logo;
@@ -270,5 +299,5 @@ function sync() {
 
 App.tools.template = {label: 'into frames', render, payload, sync};
 const saved = store.get(IMG_KEY);
-Promise.all([saved?.logo && setImg('logo', saved.logo, false), saved?.bg && setImg('bg', saved.bg, false)]).finally(() => { renderLib(); boot(); });
+Promise.all([saved?.logo && setImg('logo', saved.logo, false), saved?.bg && setImg('bg', saved.bg, false), saved?.frame && setImg('frame', saved.frame, false)]).finally(() => { renderLib(); boot(); });
 })();
