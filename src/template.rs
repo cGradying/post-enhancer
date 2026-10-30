@@ -209,6 +209,28 @@ mod tests {
     }
 
     #[test]
+    fn png_frame_sits_on_top_of_a_photo_that_fills_the_canvas() {
+        let photo = RgbImage::from_pixel(400, 300, Rgb([200, 10, 10]));
+        let l = Layout {
+            w: 200, h: 200, slot: Slot { x: 0, y: 0, w: 200, h: 200 },
+            cover: true, border: 0, border_color: white(), radius: 0, shadow: false, blur_bg: false, bg_color: "#ffffff".into(),
+        };
+        let mut frame = RgbaImage::new(200, 200);
+        for x in 0..200 {
+            for y in 0..10 {
+                frame.put_pixel(x, y, Rgba([0, 0, 255, 255]));
+            }
+        }
+        frame.put_pixel(100, 100, Rgba([0, 255, 0, 128]));
+        let out = compose(&photo, &l, None, Some(&frame), upscale::Mode::Off);
+        assert_eq!(*out.get_pixel(50, 5), Rgb([0, 0, 255]), "opaque frame pixels win");
+        assert_eq!(*out.get_pixel(50, 50), Rgb([200, 10, 10]), "photo shows through transparent frame");
+        assert_eq!(*out.get_pixel(0, 199), Rgb([200, 10, 10]), "photo reaches every edge");
+        let mixed = out.get_pixel(100, 100).0;
+        assert!((90..=110).contains(&mixed[0]) && (120..=140).contains(&mixed[1]), "half transparent pixel blends: {mixed:?}");
+    }
+
+    #[test]
     fn rounded_corner_shows_background() {
         let photo = RgbImage::from_pixel(240, 340, Rgb([200, 10, 10]));
         let mut l = layout();
