@@ -354,30 +354,70 @@ function baseOptions() {
   };
 }
 
+// A big batch goes up in parts, so no single request is huge and a dropped connection only costs one part.
+const PART_BYTES = 250e6, PART_FILES = 80;
+function parts(photos) {
+  const out = []; let cur = [], bytes = 0;
+  for (const p of photos) {
+    if (cur.length && (bytes + p.file.size > PART_BYTES || cur.length >= PART_FILES)) { out.push(cur); cur = []; bytes = 0; }
+    cur.push(p); bytes += p.file.size;
+  }
+  if (cur.length) out.push(cur);
+  return out;
+}
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const exportStamp = () => { const d = new Date(), p = n => String(n).padStart(2, '0'); return `Post Prep ${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}${p(d.getMinutes())}`; };
+
 $('export').addEventListener('click', async () => {
-  App.busy = true; updateExport();
-  const n = App.photos.length, fd = new FormData(), opts = baseOptions();
+  App.busy = true; updateExport(); $('reveal').hidden = true;
+  const n = App.photos.length, base = baseOptions(), toFolder = App.caps.local && !$('asZip').checked;
   try {
+    const layers = {};
     if (App.tool === 'post') {
-      opts.presets = chosen();
-      opts.split = splitOn() ? {cols: clampCols(+$('cols').value), rw: ratio()[0], rh: ratio()[1], pad: $('pad').value, wide_only: $('wideOnly').checked} : null;
-      opts.originals = +segVal('origSeg') || null;
+      base.presets = chosen();
+      base.split = splitOn() ? {cols: clampCols(+$('cols').value), rw: ratio()[0], rh: ratio()[1], pad: $('pad').value, wide_only: $('wideOnly').checked} : null;
+      base.originals = +segVal('origSeg') || null;
     } else {
       const t = await App.tools.template.payload();
-      opts.layout = t.layout;
-      if (t.under) fd.append('under', t.under, 'under.png');
-      if (t.over) fd.append('over', t.over, 'over.png');
+      base.layout = t.layout; layers.under = t.under; layers.over = t.over;
     }
-    fd.append('options', JSON.stringify(opts));
-    App.photos.forEach(p => fd.append('files', p.file, p.file.name));
+    if (toFolder) { base.out_dir = $('outDir').value.trim() || App.caps.default_dir; base.out_name = exportStamp(); }
 
-    progress('Uploading', 0);
-    const {id} = await upload(fd, f => progress('Uploading', f, `${Math.round(f * 100)}%`));
-    progress('Processing', 0, `0 / ${n}`);
-    const batch = await poll(id, (done, total) => progress('Processing', done / total, `${done} / ${total}`));
-    progress('Downloading', 1, '');
-    const a = document.createElement('a'); a.href = `/api/batches/${batch}`; a.download = `post-prep-${batch}.zip`; document.body.append(a); a.click(); a.remove();
-    status(`Done. ${n} photo${n > 1 ? 's' : ''} exported to your Downloads.`, 'ok');
+    const groups = parts(App.photos);
+    let done = 0, folder = '', saved = 0;
+    for (const [gi, group] of groups.entries()) {
+      const fd = new FormData();
+      fd.append('options', JSON.stringify({...base, offset: done}));
+      if (layers.under) fd.append('under', layers.under, 'under.png');
+      if (layers.over) fd.append('over', layers.over, 'over.png');
+      group.forEach(p => fd.append('files', p.file, p.file.name));
+      const tag = groups.length > 1 ? ` ${gi + 1} of ${groups.length}` : '';
+
+      let result;
+      for (let attempt = 1; ; attempt++) {
+        try {
+          progress(`Uploading${tag}`, done / n);
+          const {id} = await upload(fd, f => progress(`Uploading${tag}`, (done + f * group.length) / n, `${Math.round((done + f * group.length) / n * 100)}%`));
+          progress(`Processing${tag}`, 0, `${done} / ${n}`);
+          result = await poll(id, (d, t) => progress(`Processing${tag}`, (done + d) / n, `${done + d} / ${n}`));
+          break;
+        } catch (err) {
+          if (!err.retry || attempt >= 3) throw err;
+          status(`Part ${gi + 1} dropped, trying again (${attempt}/2)…`, 'err'); await sleep(1500 * attempt);
+        }
+      }
+      if (result.state === 'saved') { folder = result.folder; saved += result.files; }
+      else {
+        const a = document.createElement('a'); a.href = `/api/batches/${result.batch_id}`; a.download = `post-prep-${result.batch_id}${groups.length > 1 ? `-part${gi + 1}` : ''}.zip`;
+        document.body.append(a); a.click(); a.remove(); if (gi < groups.length - 1) await sleep(500);
+      }
+      done += group.length;
+    }
+    progress('Done', 1, '');
+    if (folder) {
+      status(`Done. ${n} photo${n > 1 ? 's' : ''} saved as ${saved} files in ${folder}.`, 'ok');
+      $('reveal').hidden = false; $('reveal').dataset.path = folder;
+    } else status(`Done. ${n} photo${n > 1 ? 's' : ''} exported to your Downloads${groups.length > 1 ? ` as ${groups.length} zips` : ''}.`, 'ok');
     loadHistory();
   } catch (err) {
     if (err.message === 'login') { location.href = '/login'; return; }
@@ -387,18 +427,31 @@ $('export').addEventListener('click', async () => {
   }
 });
 
+const local = (url, body) => fetch(url, {method: 'POST', headers: {'X-Post-Prep': '1', ...(body ? {'Content-Type': 'application/json'} : {})}, body: body && JSON.stringify(body)});
+$('reveal').addEventListener('click', async () => { const r = await local('/api/reveal', {path: $('reveal').dataset.path}); if (!r.ok) status(await r.text(), 'err'); });
+$('outPick').addEventListener('click', async () => {
+  $('outPick').disabled = true;
+  try {
+    const r = await local('/api/choose-folder');
+    if (!r.ok) throw new Error(await r.text());
+    const j = await r.json();
+    if (j.path) { $('outDir').value = j.path; changed(); }
+  } catch (err) { status(`Couldn't open the folder picker: ${err.message}`, 'err'); }
+  $('outPick').disabled = false;
+});
+
 function upload(fd, onProgress) {
   return new Promise((resolve, reject) => {
     const x = new XMLHttpRequest();
-    x.open('POST', '/api/jobs');
+    x.open('POST', '/api/jobs'); x.setRequestHeader('X-Post-Prep', '1');
     x.upload.onprogress = e => e.lengthComputable && onProgress(e.loaded / e.total);
     x.onload = () => {
       if (x.status === 401) return reject(new Error('login'));
-      if (x.status === 413) return reject(new Error('the batch is over the upload limit, so export fewer photos at a time'));
-      if (x.status !== 200) return reject(new Error(x.responseText || `HTTP ${x.status}`));
+      if (x.status === 413) return reject(new Error('one photo is bigger than the upload limit'));
+      if (x.status !== 200) return reject(Object.assign(new Error(x.responseText || `HTTP ${x.status}`), {retry: x.status >= 500}));
       resolve(JSON.parse(x.responseText));
     };
-    x.onerror = () => reject(new Error('the connection dropped'));
+    x.onerror = () => reject(Object.assign(new Error('the connection dropped'), {retry: true}));
     x.send(fd);
   });
 }
@@ -408,7 +461,7 @@ async function poll(id, onProgress) {
     if (res.status === 401) throw new Error('login');
     const j = await res.json();
     onProgress(j.done, j.total);
-    if (j.state === 'done') return j.batch_id;
+    if (j.state === 'done' || j.state === 'saved') return j;
     if (j.state === 'failed') throw new Error(j.error);
     await new Promise(r => setTimeout(r, 300));
   }
@@ -468,6 +521,8 @@ async function boot() {
     $('version').textContent = 'POST PREP v' + App.caps.version;
   } catch {}
   $('upAi').hidden = !App.caps.ai_upscale;
+  $('dest').hidden = !App.caps.local; $('outPick').hidden = !App.caps.can_choose;
+  $('outDir').placeholder = App.caps.default_dir ? App.caps.default_dir.replace(/^\/Users\/[^/]+/, '~') : '';
   if (!App.caps.ai_upscale && segVal('upSeg') === 'ai') setSeg('upSeg', 'lanczos');
   $('formats').textContent = 'JPEG · PNG · WebP · TIFF · BMP · GIF' + (App.caps.heic ? ' · HEIC · AVIF' : '');
   changed(); loadHistory();

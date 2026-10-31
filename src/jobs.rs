@@ -7,6 +7,7 @@ use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::io::Write;
+use std::path::Path;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
@@ -45,6 +46,13 @@ pub struct Options {
     pub date: String,
     #[serde(default)]
     pub meta: Meta,
+    /// Photos already handled by earlier parts of the same export, so `{n}` keeps counting.
+    #[serde(default)]
+    pub offset: usize,
+    /// Save files straight into this folder instead of building a zip. Local use only.
+    pub out_dir: Option<String>,
+    /// Sub-folder made inside `out_dir`, shared by every part of one export.
+    pub out_name: Option<String>,
 }
 
 fn q95() -> u8 {
@@ -79,6 +87,7 @@ pub struct Layers {
 pub enum State {
     Running,
     Done { batch_id: String },
+    Saved { folder: String, files: usize },
     Failed { error: String },
 }
 
@@ -115,14 +124,22 @@ impl Jobs {
 
 // ---- processing ----
 
-/// Process every upload in parallel and pack the results into one zip.
+pub enum Output {
+    Zip(Vec<u8>),
+    Saved { folder: String, files: usize },
+}
+
+/// Process every upload in parallel. Results go into one zip, or straight into `dir` when given.
 /// Per-file failures go to errors.txt instead of failing the batch.
-pub fn run(files: &[Upload], opts: &Options, layers: &Layers, job: &Job) -> Result<Vec<u8>, String> {
+pub fn run(files: &[Upload], opts: &Options, layers: &Layers, job: &Job, dir: Option<&Path>) -> Result<Output, String> {
+    if let Some(dir) = dir {
+        return save_to_dir(files, opts, layers, job, dir);
+    }
     let outputs: Vec<Result<Vec<(String, Vec<u8>)>, String>> = files
         .par_iter()
         .enumerate()
         .map(|(i, f)| {
-            let r = process(f, i + 1, opts, layers);
+            let r = process(f, i + 1 + opts.offset, opts, layers);
             job.done.fetch_add(1, Ordering::Relaxed);
             r
         })
@@ -147,7 +164,60 @@ pub fn run(files: &[Upload], opts: &Options, layers: &Layers, job: &Job) -> Resu
         zip.start_file("errors.txt", stored).map_err(|e| e.to_string())?;
         zip.write_all(errors.as_bytes()).map_err(|e| e.to_string())?;
     }
-    Ok(zip.finish().map_err(|e| e.to_string())?.into_inner())
+    Ok(Output::Zip(zip.finish().map_err(|e| e.to_string())?.into_inner()))
+}
+
+/// Each photo is written as soon as it is done, so memory stays at a few photos however big the batch is.
+fn save_to_dir(files: &[Upload], opts: &Options, layers: &Layers, job: &Job, dir: &Path) -> Result<Output, String> {
+    std::fs::create_dir_all(dir).map_err(|e| format!("can't create {}: {e}", dir.display()))?;
+    let used = Mutex::new(HashSet::new());
+    let written = AtomicUsize::new(0);
+    let errors = Mutex::new(String::new());
+    files.par_iter().enumerate().for_each(|(i, f)| {
+        match process(f, i + 1 + opts.offset, opts, layers) {
+            Ok(entries) => {
+                for (path, data) in entries {
+                    match write_unique(dir, &used, path, &data) {
+                        Ok(()) => { written.fetch_add(1, Ordering::Relaxed); }
+                        Err(e) => errors.lock().unwrap().push_str(&format!("{}: {e}\n", f.name)),
+                    }
+                }
+            }
+            Err(e) => errors.lock().unwrap().push_str(&format!("{e}\n")),
+        }
+        job.done.fetch_add(1, Ordering::Relaxed);
+    });
+    let errors = errors.into_inner().unwrap();
+    if !errors.is_empty() {
+        let mut f = std::fs::OpenOptions::new().create(true).append(true).open(dir.join("errors.txt")).map_err(|e| e.to_string())?;
+        f.write_all(errors.as_bytes()).map_err(|e| e.to_string())?;
+    }
+    Ok(Output::Saved { folder: dir.display().to_string(), files: written.into_inner() })
+}
+
+/// Never overwrite: a name already used in this export, or already on disk, gets a -2, -3 suffix.
+fn write_unique(dir: &Path, used: &Mutex<HashSet<String>>, path: String, data: &[u8]) -> std::io::Result<()> {
+    let rel = {
+        let mut used = used.lock().unwrap();
+        loop {
+            let candidate = unique(&mut used, path.clone());
+            if !dir.join(&candidate).exists() {
+                break candidate;
+            }
+        }
+    };
+    let full = dir.join(rel);
+    if let Some(parent) = full.parent() {
+        std::fs::create_dir_all(parent)?;
+    }
+    std::fs::write(full, data)
+}
+
+/// A folder name that is safe to create: letters, digits, spaces, dash and underscore.
+pub fn dir_name(s: &str) -> String {
+    let s: String = s.chars().map(|c| if c.is_alphanumeric() || " -_".contains(c) { c } else { '_' }).collect();
+    let s = s.trim_matches([' ', '_', '.']);
+    if s.is_empty() { "Post Prep".into() } else { s.into() }
 }
 
 fn process(f: &Upload, n: usize, opts: &Options, layers: &Layers) -> Result<Vec<(String, Vec<u8>)>, String> {
@@ -234,6 +304,31 @@ mod tests {
         assert_eq!(rename("", "IMG 1", "", "", 7, "ig_tall"), "IMG_1_ig_tall");
         assert_eq!(rename("{date}-{name}-{n}", "a", "", "2026-10-23", 12, "x"), "2026-10-23-a-12");
         assert_eq!(rename("../../{name}", "a", "", "", 1, "x"), "a");
+    }
+
+    #[test]
+    fn folder_names_are_flattened() {
+        assert_eq!(dir_name("Post Prep 2026-10-31"), "Post Prep 2026-10-31");
+        assert_eq!(dir_name("../../etc"), "etc");
+        assert_eq!(dir_name("a/b\\c"), "a_b_c");
+        assert_eq!(dir_name("..."), "Post Prep");
+    }
+
+    #[test]
+    fn saving_never_overwrites_and_counts_on() {
+        let dir = std::env::temp_dir().join(format!("pp-test-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        let used = Mutex::new(HashSet::new());
+        write_unique(&dir, &used, "a/x.jpg".into(), b"one").unwrap();
+        write_unique(&dir, &used, "a/x.jpg".into(), b"two").unwrap();
+        // a later part of the same export has a fresh set but the files are already on disk
+        let later = Mutex::new(HashSet::new());
+        write_unique(&dir, &later, "a/x.jpg".into(), b"three").unwrap();
+        let mut names: Vec<_> = std::fs::read_dir(dir.join("a")).unwrap().map(|e| e.unwrap().file_name().into_string().unwrap()).collect();
+        names.sort();
+        assert_eq!(names, ["x-2.jpg", "x-3.jpg", "x.jpg"]);
+        assert_eq!(std::fs::read(dir.join("a/x.jpg")).unwrap(), b"one");
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]

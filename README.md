@@ -107,7 +107,11 @@ The dock at the bottom holds the format and upscale mode. **More options** holds
 
 Rename tokens: `{name}` original name, `{event}`, `{date}` (YYYY-MM-DD), `{n}` or `{n:03}` for a zero-padded counter, `{preset}` output id. The default is `{name}_{preset}`. Names are sanitized to letters, digits, `.`, `_` and `-`, and duplicates get `-2`, `-3`.
 
-Export uploads the batch, shows `n / total` while it processes, then downloads one zip. **History** in the top bar re-downloads earlier batches.
+Export uploads the batch, shows `n / total` while it processes, then delivers the result.
+
+**Save to.** In the Mac app the export panel has a **Save to** folder. **Choose…** opens the macOS folder picker, or type a path like `~/Downloads/Post Prep`. Each export is saved in its own sub-folder named with the date and time, for example `Post Prep 2026-10-31 1724/instagram/IMG_0001_ig_portrait.jpg`. Files are written as each photo finishes, existing files are never overwritten, and the **Show in Finder** link under the status opens the folder. The folder must be inside your home folder or on an external drive. Tick **Download one zip instead of saving files** to get a zip. On a hosted deployment there is no folder option, only the zip.
+
+**Big batches.** Photos go up in parts of at most 80 files or 250 MB, one part at a time, so a few hundred photos no longer exceed the upload limit. Numbering with `{n}` carries on across parts. A part that drops is retried twice before the export stops, and a zip export downloads one zip per part. **History** in the top bar re-downloads earlier zip batches.
 
 ## Output reference
 
@@ -178,13 +182,17 @@ The page is the only client, but the API is plain HTTP. Behind a password, log i
 | Route | Description |
 |---|---|
 | `POST /api/jobs` | Multipart: `options` (JSON), `files` (repeatable), optional `under` and `over` (PNG layers, template only). Returns `{"id": "…"}`. |
-| `GET /api/jobs/{id}` | `{"state":"running","done":3,"total":12}`, then `{"state":"done","batch_id":"…"}` or `{"state":"failed","error":"…"}`. |
+| `GET /api/jobs/{id}` | `{"state":"running","done":3,"total":12}`, then `{"state":"done","batch_id":"…"}`, `{"state":"saved","folder":"…","files":780}` when `out_dir` was used, or `{"state":"failed","error":"…"}`. |
 | `GET /api/batches` | Batch ids, newest first. |
 | `GET /api/batches/{id}` | The zip. |
 | `POST /api/preview` | Multipart `file`; returns a JPEG of at most 1600 px, with the source size in `x-source-size`. Used for formats browsers can't display. |
-| `GET /api/capabilities` | `{"ai_upscale": bool, "heic": bool, "version": "…"}` |
+| `GET /api/capabilities` | `{"ai_upscale": bool, "heic": bool, "version": "…", "local": bool, "can_choose": bool, "default_dir": "…"}` |
+| `POST /api/choose-folder` | Opens the macOS folder picker. Returns `{"path": "…"}` or `{"cancelled": true}`. |
+| `POST /api/reveal` | `{"path": "…"}` opens that folder in Finder. |
 
-`options` fields are all optional; `layout` is required when `tool` is `template`:
+`out_dir`, `/api/choose-folder` and `/api/reveal` only work when the server is bound to `127.0.0.1` (the Mac app), and only for requests from the app's own page: the request needs the header `X-Post-Prep: 1`, and `Host` and `Origin` must be `localhost` or `127.0.0.1` on the server's port. Other pages in your browser cannot make the app write to your disk.
+
+`options` fields are all optional; `layout` is required when `tool` is `template`. `offset`, `out_dir` and `out_name` are how the page splits a big export:
 
 ```jsonc
 {
@@ -197,6 +205,9 @@ The page is the only client, but the API is plain HTTP. Behind a password, log i
   "quality": 95,                       // 60–100, JPEG only
   "upscale": "lanczos",                // "off" | "lanczos" | "ai"
   "enhance": false,
+  "offset": 0,                         // photos handled by earlier parts of this export, so {n} keeps counting
+  "out_dir": "~/Downloads/Post Prep",  // local Mac app only: save files here instead of building a zip
+  "out_name": "Post Prep 2026-10-31",  // sub-folder made inside out_dir, shared by every part
   "rename": "{event}_{n:03}",
   "event": "summit",
   "date": "2026-10-23",
@@ -254,7 +265,7 @@ The tests cover the splitter's lossless stitch, preset sizes, upscale-or-keep be
 
 ## Limits and notes
 
-- Each batch is processed and zipped in memory, so budget RAM for the inputs plus the outputs; keep `MAX_UPLOAD_MB` in line with the host.
+- A zip export holds each part's inputs and outputs in memory, so budget RAM for about 250 MB of photos plus their outputs. Saving to a folder writes each photo as it finishes and keeps only a few photos in memory. A single photo larger than `MAX_UPLOAD_MB` is rejected.
 - Only the first frame of an animated GIF is read. Output is 8-bit.
 - Auth is a single shared password with no rate limiting. Don't expose it to the open internet unprotected.
 - Template previews draw a blurred-photo background approximately; the export renders the real blur.

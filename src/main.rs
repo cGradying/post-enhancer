@@ -18,11 +18,15 @@ use axum::{
 use serde::Deserialize;
 use std::{
     hash::{BuildHasher, Hasher},
+    path::PathBuf,
     sync::{atomic::Ordering, Arc},
 };
 use store::Store;
 
 struct App {
+    /// Served on this machine only, so it may write to folders the user picks.
+    local: bool,
+    port: String,
     store: Store,
     jobs: jobs::Jobs,
     password: Option<String>,
@@ -35,7 +39,10 @@ async fn main() {
     if password.is_none() {
         eprintln!("APP_PASSWORD not set: running without a login gate");
     }
-    let app = Arc::new(App { store: Store::from_env().await, jobs: Default::default(), password, token: random_token() });
+    let port = std::env::var("PORT").unwrap_or("8080".into());
+    let host = std::env::var("HOST").unwrap_or("0.0.0.0".into());
+    let local = matches!(host.as_str(), "127.0.0.1" | "localhost" | "::1");
+    let app = Arc::new(App { local, port: port.clone(), store: Store::from_env().await, jobs: Default::default(), password, token: random_token() });
     let max_mb: usize = std::env::var("MAX_UPLOAD_MB").ok().and_then(|v| v.parse().ok()).unwrap_or(1024);
 
     let router = Router::new()
@@ -47,6 +54,8 @@ async fn main() {
         .route("/api/jobs/{id}", get(job_status))
         .route("/api/preview", post(preview))
         .route("/api/capabilities", get(capabilities))
+        .route("/api/choose-folder", post(choose_folder))
+        .route("/api/reveal", post(reveal))
         .route("/api/batches", get(list_batches))
         .route("/api/batches/{id}", get(get_batch))
         .route_layer(middleware::from_fn_with_state(app.clone(), require_login))
@@ -55,8 +64,6 @@ async fn main() {
         .layer(DefaultBodyLimit::max(max_mb * 1024 * 1024))
         .with_state(app);
 
-    let port = std::env::var("PORT").unwrap_or("8080".into());
-    let host = std::env::var("HOST").unwrap_or("0.0.0.0".into());
     let listener = tokio::net::TcpListener::bind(format!("{host}:{port}")).await.unwrap();
     println!("listening on http://localhost:{port}");
     axum::serve(listener, router).await.unwrap();
@@ -132,7 +139,7 @@ fn random_token() -> String {
 
 // ---- jobs ----
 
-async fn create_job(State(app): State<Arc<App>>, mut form: Multipart) -> Response {
+async fn create_job(State(app): State<Arc<App>>, headers: HeaderMap, mut form: Multipart) -> Response {
     let mut opts = None;
     let mut files = Vec::new();
     let mut layers = jobs::Layers { under: None, over: None };
@@ -140,13 +147,13 @@ async fn create_job(State(app): State<Arc<App>>, mut form: Multipart) -> Respons
         let field = match form.next_field().await {
             Ok(Some(f)) => f,
             Ok(None) => break,
-            Err(e) => return (StatusCode::BAD_REQUEST, e.to_string()).into_response(),
+            Err(e) => return upload_error(&e),
         };
         let field_name = field.name().unwrap_or("").to_string();
         let file_name = field.file_name().unwrap_or("photo").to_string();
         let bytes = match field.bytes().await {
             Ok(b) => b,
-            Err(e) => return (StatusCode::BAD_REQUEST, e.to_string()).into_response(),
+            Err(e) => return upload_error(&e),
         };
         match field_name.as_str() {
             "options" => match serde_json::from_slice::<jobs::Options>(&bytes) {
@@ -169,17 +176,26 @@ async fn create_job(State(app): State<Arc<App>>, mut form: Multipart) -> Respons
         return (StatusCode::BAD_REQUEST, "no files").into_response();
     }
 
+    let dir = match opts.out_dir.as_deref() {
+        None => None,
+        Some(base) => match local_request(&app, &headers).and_then(|()| export_dir(base, opts.out_name.as_deref())) {
+            Ok(d) => Some(d),
+            Err(e) => return (StatusCode::FORBIDDEN, e).into_response(),
+        },
+    };
+
     let id = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_millis().to_string();
     let job = app.jobs.create(&id, files.len());
     let (app2, id2) = (app.clone(), id.clone());
     tokio::spawn(async move {
         let worker = job.clone();
-        let result = tokio::task::spawn_blocking(move || jobs::run(&files, &opts, &layers, &worker)).await;
+        let result = tokio::task::spawn_blocking(move || jobs::run(&files, &opts, &layers, &worker, dir.as_deref())).await;
         let state = match result {
-            Ok(Ok(zip)) => match app2.store.put(&id2, zip).await {
+            Ok(Ok(jobs::Output::Zip(zip))) => match app2.store.put(&id2, zip).await {
                 Ok(()) => jobs::State::Done { batch_id: id2 },
                 Err(e) => jobs::State::Failed { error: format!("couldn't save the batch: {e}") },
             },
+            Ok(Ok(jobs::Output::Saved { folder, files })) => jobs::State::Saved { folder, files },
             Ok(Err(e)) => jobs::State::Failed { error: e },
             Err(e) => jobs::State::Failed { error: e.to_string() },
         };
@@ -218,12 +234,103 @@ async fn preview(mut form: Multipart) -> Response {
     }
 }
 
-async fn capabilities() -> Json<serde_json::Value> {
+async fn capabilities(State(app): State<Arc<App>>) -> Json<serde_json::Value> {
     Json(serde_json::json!({
         "ai_upscale": upscale::ai_bin().is_some(),
         "heic": cfg!(target_os = "macos"),
         "version": env!("CARGO_PKG_VERSION"),
+        "local": app.local,
+        "can_choose": app.local && cfg!(target_os = "macos"),
+        "default_dir": app.local.then(|| home().join("Downloads").join("Post Prep").display().to_string()),
     }))
+}
+
+// ---- saving to a folder on this machine ----
+
+fn home() -> PathBuf {
+    PathBuf::from(std::env::var("HOME").unwrap_or_else(|_| "/".into()))
+}
+
+fn upload_error(e: &axum::extract::multipart::MultipartError) -> Response {
+    (e.status(), e.body_text()).into_response()
+}
+
+/// Folder writes only come from this app's own page. A web page on the internet can post to
+/// localhost too, but cannot send the custom header or fake the Host header.
+fn local_request(app: &App, headers: &HeaderMap) -> Result<(), String> {
+    if !app.local {
+        return Err("saving to a folder only works in the Mac app".into());
+    }
+    let host = headers.get(header::HOST).and_then(|v| v.to_str().ok()).unwrap_or("");
+    let ok_host = [format!("localhost:{}", app.port), format!("127.0.0.1:{}", app.port)].iter().any(|h| h == host);
+    let ok_origin = headers.get(header::ORIGIN).and_then(|v| v.to_str().ok()).is_none_or(|o| o == format!("http://{host}"));
+    if ok_host && ok_origin && headers.get("x-post-prep").is_some_and(|v| v == "1") {
+        Ok(())
+    } else {
+        Err("this request did not come from the Post Prep page".into())
+    }
+}
+
+/// `base` must be an absolute folder (a leading ~ is allowed) inside the home folder or on an external drive.
+fn user_folder(base: &str) -> Result<PathBuf, String> {
+    let base = base.trim();
+    let p = match base.strip_prefix("~/") {
+        Some(rest) => home().join(rest),
+        None if base == "~" => home(),
+        None => PathBuf::from(base),
+    };
+    if !p.is_absolute() || p.components().any(|c| matches!(c, std::path::Component::ParentDir)) {
+        return Err("choose a full folder path, like ~/Downloads/Post Prep".into());
+    }
+    if !(p.starts_with(home()) || p.starts_with("/Volumes")) {
+        return Err("the folder must be inside your home folder or on an external drive".into());
+    }
+    Ok(p)
+}
+
+fn export_dir(base: &str, name: Option<&str>) -> Result<PathBuf, String> {
+    let dir = user_folder(base)?;
+    Ok(match name {
+        Some(n) => dir.join(jobs::dir_name(n)),
+        None => dir,
+    })
+}
+
+/// Native folder picker. The browser cannot hand over a real path, so the Mac app asks macOS.
+async fn choose_folder(State(app): State<Arc<App>>, headers: HeaderMap) -> Response {
+    if let Err(e) = local_request(&app, &headers) {
+        return (StatusCode::FORBIDDEN, e).into_response();
+    }
+    let run = tokio::process::Command::new("osascript")
+        .args(["-e", "tell current application to activate", "-e", "POSIX path of (choose folder with prompt \"Save exports to\")"])
+        .kill_on_drop(true)
+        .output();
+    match tokio::time::timeout(std::time::Duration::from_secs(300), run).await {
+        Ok(Ok(out)) if out.status.success() => {
+            let path = String::from_utf8_lossy(&out.stdout).trim().trim_end_matches('/').to_string();
+            Json(serde_json::json!({ "path": path })).into_response()
+        }
+        Ok(Ok(_)) => Json(serde_json::json!({ "cancelled": true })).into_response(),
+        Ok(Err(e)) => (StatusCode::INTERNAL_SERVER_ERROR, format!("couldn't open the folder picker: {e}")).into_response(),
+        Err(_) => (StatusCode::REQUEST_TIMEOUT, "the folder picker timed out").into_response(),
+    }
+}
+
+#[derive(Deserialize)]
+struct RevealRequest {
+    path: String,
+}
+
+async fn reveal(State(app): State<Arc<App>>, headers: HeaderMap, Json(r): Json<RevealRequest>) -> Response {
+    let path = match local_request(&app, &headers).and_then(|()| user_folder(&r.path)) {
+        Ok(p) if p.is_dir() => p,
+        Ok(_) => return (StatusCode::NOT_FOUND, "that folder does not exist").into_response(),
+        Err(e) => return (StatusCode::FORBIDDEN, e).into_response(),
+    };
+    match std::process::Command::new("open").arg(path).status() {
+        Ok(s) if s.success() => StatusCode::NO_CONTENT.into_response(),
+        _ => (StatusCode::INTERNAL_SERVER_ERROR, "couldn't open the folder").into_response(),
+    }
 }
 
 fn zip_response(id: &str, zip: Vec<u8>) -> Response {

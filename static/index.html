@@ -202,9 +202,14 @@ FORM: pinned by user ("use pixel-id-maker for design reference"); distilled on r
         </div>
       </div>
     </details>
+    <div class="dest" id="dest" hidden>
+      <div class="row"><span class="lbl-inline">Save to</span><input type="text" id="outDir" spellcheck="false" aria-label="Folder to save exports in"><button type="button" class="btn-sm" id="outPick" hidden>Choose…</button></div>
+      <label class="chk"><input type="checkbox" id="asZip"> Download one zip instead of saving files</label>
+    </div>
     <button class="btn" id="export" disabled><svg class="ico"><use href="#i-down"/></svg><span id="exportLabel">Add photos to export</span></button>
     <div class="prog" id="prog" hidden><div class="lbl"><span id="progStage">Uploading</span><b class="num" id="progCount"></b></div><div class="bar" id="progBar"><i></i></div></div>
     <p class="status" id="status" role="status"></p>
+    <button type="button" class="link" id="reveal" hidden>Show in Finder</button>
     <p class="credit"><span id="version"></span> · made by <a href="https://github.com/cGradying" target="_blank" rel="noopener">cgradying</a></p>
   </footer>
 </aside>
